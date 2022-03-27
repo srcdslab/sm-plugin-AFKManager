@@ -2,10 +2,7 @@
 #include <sdktools>
 #include <cstrike>
 #include <AFKManager>
-
-#undef REQUIRE_PLUGIN
-#include <zombiereloaded>
-#define REQUIRE_PLUGIN
+#tryinclude <zombiereloaded>
 
 #pragma semicolon 1
 #pragma newdecls required
