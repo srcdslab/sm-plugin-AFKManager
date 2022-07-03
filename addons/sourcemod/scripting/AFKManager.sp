@@ -280,11 +280,13 @@ public Action Teleport_OnEndTouch(const char[] output, int caller, int activator
 public Action ZR_OnClientInfect(int &client, int &attacker, bool &motherInfect, bool &respawnOverride, bool &respawn)
 {
 	g_Players_iIgnore[client] |= IGNORE_TEAMSWITCH;
+	return Plugin_Continue;
 }
 
 public Action ZR_OnClientHuman(int &client, bool &respawn, bool &protect)
 {
 	g_Players_iIgnore[client] |= IGNORE_TEAMSWITCH;
+	return Plugin_Continue;
 }
 
 public Action Timer_CheckPlayer(Handle Timer, any Data)
