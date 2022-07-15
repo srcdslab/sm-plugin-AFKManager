@@ -17,7 +17,7 @@ public SharedPlugin __pl_AFKManager =
 };
 
 #if !defined REQUIRE_PLUGIN
-public __pl_AFKManager_SetNTVOptional()
+public void __pl_AFKManager_SetNTVOptional()
 {
 	MarkNativeAsOptional("GetClientIdleTime");
 }
