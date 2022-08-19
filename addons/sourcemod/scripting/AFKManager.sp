@@ -215,7 +215,7 @@ public Action Command_Say(int client, const char[] Command, int Args)
 public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVel[3], float fAngles[3], int &iWeapon)
 {
 	if(!IsClientInGame(client))
-		return Plugin_Handled;
+		return Plugin_Continue;
 		
 	if(IsClientObserver(client))
 	{
