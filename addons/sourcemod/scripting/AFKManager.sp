@@ -1,7 +1,7 @@
 #include <sourcemod>
 #include <sdktools>
 #include <cstrike>
-#include <AFKManager>
+
 #tryinclude <zombiereloaded>
 
 #pragma semicolon 1
@@ -37,7 +37,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3",
+	version = "1.3.0",
 	url = ""
 };
 
