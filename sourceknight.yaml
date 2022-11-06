@@ -16,6 +16,13 @@ project:
       unpack:
       - source: /src/addons/sourcemod/scripting/include
         dest: /addons/sourcemod/scripting/include
+        
+    - name: multicolors
+      type: git
+      repo: https://github.com/srcdslab/sm-plugin-MultiColors
+      unpack:
+      - source: /addons
+        dest: /addons
 
   root: /
   output: /addons/sourcemod/plugins
