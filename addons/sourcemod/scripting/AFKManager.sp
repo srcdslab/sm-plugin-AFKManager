@@ -39,7 +39,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.1",
+	version = "1.3.2",
 	url = ""
 };
 
@@ -404,7 +404,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			break;
 		else
 		{
-			PrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", InactivePlayer, InactivePlayerTime);
+			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", InactivePlayer, InactivePlayerTime);
 			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
 			Clients--;
 			g_Players_bFlagged[InactivePlayer] = false;
