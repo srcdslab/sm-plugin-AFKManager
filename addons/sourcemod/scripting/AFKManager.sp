@@ -4,6 +4,7 @@
 #include <multicolors>
 
 #tryinclude <zombiereloaded>
+#tryinclude <EntWatch>
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -34,12 +35,17 @@ int g_iKickMinPlayers;
 int g_iMoveMinPlayers;
 int g_iImmunity;
 
+#if defined _EntWatch_include
+bool g_bEntWatch = false;
+int g_iEntWatch;
+#endif
+
 public Plugin myinfo =
 {
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.2",
+	version = "1.3.3",
 	url = ""
 };
 
@@ -68,6 +74,13 @@ public void Cvar_Immunity(ConVar convar, const char[] oldValue, const char[] new
 	g_iImmunity = GetConVarInt(convar);
 }
 
+#if defined _EntWatch_include
+public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	g_iEntWatch = GetConVarInt(convar);
+}
+#endif
+
 public void OnPluginStart()
 {
 	ConVar cvar;
@@ -88,6 +101,11 @@ public void OnPluginStart()
 
 	HookConVarChange((cvar = CreateConVar("sm_afk_immunity", "1", "AFK admins immunity: 0 = DISABLED, 1 = COMPLETE, 2 = KICK, 3 = MOVE")), Cvar_Immunity);
 	g_iImmunity = GetConVarInt(cvar);
+
+	#if defined _EntWatch_include
+	HookConVarChange((cvar = CreateConVar("sm_afk_immunity_items", "1", "AFK immunity for Items Owner: 0 = DISABLE")), Cvar_ImmunityItems);
+	g_iEntWatch = GetConVarInt(cvar);
+	#endif
 
 	CloseHandle(cvar);
 
@@ -110,6 +128,23 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	return APLRes_Success;
 }
+
+#if defined _EntWatch_include
+public void OnAllPluginsLoaded()
+{
+	g_bEntWatch = LibraryExists("EntWatch");
+}
+public void OnLibraryRemoved(const char[] name)
+{
+	if (StrEqual(name, "EntWatch"))
+		g_bEntWatch = false;
+}
+public void OnLibraryAdded(const char[] name)
+{
+	if (StrEqual(name, "EntWatch"))
+		g_bEntWatch = true;
+}
+#endif
 
 public void OnMapStart()
 {
@@ -315,6 +350,16 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 	{
 		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
 			continue;
+
+		#if defined _EntWatch_include
+		if (!g_bEntWatch)
+			continue;
+		else
+		{
+			if (g_iEntWatch && EntWatch_HasSpecialItem(client))
+				continue;
+		}
+		#endif
 
 		int iTeamNum = GetClientTeam(client);
 
