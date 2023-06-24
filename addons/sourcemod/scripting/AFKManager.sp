@@ -72,12 +72,10 @@ public void Cvar_Immunity(ConVar convar, const char[] oldValue, const char[] new
 	g_iImmunity = GetConVarInt(convar);
 }
 
-#if defined _EntWatch_include
 public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	g_iEntWatch = GetConVarInt(convar);
 }
-#endif
 
 public void OnPluginStart()
 {
@@ -345,13 +343,13 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
 			continue;
 
+		#if defined _EntWatch_include
 		if (g_bEntWatch)
 		{
-			#if defined _EntWatch_include
 			if (g_iEntWatch && EntWatch_HasSpecialItem(client))
 				continue;
-			#endif
 		}
+		#endif
 
 		int iTeamNum = GetClientTeam(client);
 
