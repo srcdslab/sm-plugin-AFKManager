@@ -3,8 +3,10 @@
 #include <cstrike>
 #include <multicolors>
 
+#undef REQUIRE_PLUGIN
 #tryinclude <zombiereloaded>
 #tryinclude <EntWatch>
+#define REQUIRE_PLUGIN
 
 #pragma semicolon 1
 #pragma newdecls required
@@ -43,7 +45,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.3",
+	version = "1.3.4",
 	url = ""
 };
 
@@ -344,11 +346,8 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			continue;
 
 		#if defined _EntWatch_include
-		if (g_bEntWatch)
-		{
-			if (g_iEntWatch && EntWatch_HasSpecialItem(client))
-				continue;
-		}
+		if (g_bEntWatch && g_iEntWatch == 1 && EntWatch_HasSpecialItem(client))
+			continue;
 		#endif
 
 		int iTeamNum = GetClientTeam(client);
