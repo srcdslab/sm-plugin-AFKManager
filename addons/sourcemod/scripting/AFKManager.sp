@@ -45,7 +45,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.4",
+	version = "1.3.5",
 	url = ""
 };
 
@@ -73,7 +73,6 @@ public void Cvar_Immunity(ConVar convar, const char[] oldValue, const char[] new
 {
 	g_iImmunity = GetConVarInt(convar);
 }
-
 public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	g_iEntWatch = GetConVarInt(convar);
@@ -345,14 +344,14 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
 			continue;
 
+		int IdleTime = GetTime() - g_Players_iLastAction[client];
+
 		#if defined _EntWatch_include
-		if (g_bEntWatch && g_iEntWatch == 1 && EntWatch_HasSpecialItem(client))
+		if (g_bEntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
 			continue;
 		#endif
 
 		int iTeamNum = GetClientTeam(client);
-
-		int IdleTime = GetTime() - g_Players_iLastAction[client];
 
 		if(g_Players_bFlagged[client] && (g_fKickTime - IdleTime) > 0.0)
 		{
