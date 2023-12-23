@@ -410,6 +410,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				if(!g_Players_bFlagged[client] || g_Players_bNotJoinedTeam[client])
 				{
 					CPrintToChat(client, "%s {default}You have been kick-flagged for being inactive.", TAG);
+					g_Players_bNotJoinedTeam[client] = false;
 					g_Players_bFlagged[client] = true;
 				}
 				int FlaggedPlayers = 0;
