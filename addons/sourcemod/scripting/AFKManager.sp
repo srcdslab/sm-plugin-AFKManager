@@ -15,6 +15,7 @@
 #define TAG "{green}[AFK]"
 
 bool g_Players_bEnabled[MAXPLAYERS + 1];
+bool g_Players_bNotJoinedTeam[MAXPLAYERS + 1];
 bool g_Players_bFlagged[MAXPLAYERS + 1];
 int g_Players_iLastAction[MAXPLAYERS + 1];
 float g_Players_fEyePosition[MAXPLAYERS + 1][3];
@@ -45,7 +46,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.5",
+	version = "1.3.6",
 	url = ""
 };
 
@@ -197,6 +198,7 @@ void InitializePlayer(int client)
 		ResetPlayer(client);
 		g_Players_iLastAction[client] = GetTime();
 		g_Players_bEnabled[client] = true;
+		CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -322,6 +324,19 @@ public Action ZR_OnClientHuman(int &client, bool &respawn, bool &protect)
 	return Plugin_Continue;
 }
 
+public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
+{
+	int client = GetClientOfUserId(userid);
+
+	if (!client)
+		return Plugin_Stop;
+
+	if (GetClientTeam(client) == CS_TEAM_NONE)
+		g_Players_bNotJoinedTeam[client] = true;
+
+	return Plugin_Continue;
+}
+
 public Action Timer_CheckPlayer(Handle Timer, any Data)
 {
 	int client;
@@ -379,7 +394,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 			}
 		}
-		else if(g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 || !CheckAdminImmunity(client)))
+		else if(g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 || !CheckAdminImmunity(client)) || g_Players_bNotJoinedTeam[client])
 		{
 			float iTimeleft = g_fKickTime - IdleTime;
 			if(iTimeleft > 0.0)
@@ -392,7 +407,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			}
 			else
 			{
-				if(!g_Players_bFlagged[client])
+				if(!g_Players_bFlagged[client] || g_Players_bNotJoinedTeam[client])
 				{
 					CPrintToChat(client, "%s {default}You have been kick-flagged for being inactive.", TAG);
 					g_Players_bFlagged[client] = true;
