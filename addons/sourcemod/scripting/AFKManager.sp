@@ -45,7 +45,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.5",
+	version = "1.3.6",
 	url = ""
 };
 
@@ -197,6 +197,7 @@ void InitializePlayer(int client)
 		ResetPlayer(client);
 		g_Players_iLastAction[client] = GetTime();
 		g_Players_bEnabled[client] = true;
+		CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 	}
 }
 
@@ -319,6 +320,19 @@ public Action ZR_OnClientInfect(int &client, int &attacker, bool &motherInfect, 
 public Action ZR_OnClientHuman(int &client, bool &respawn, bool &protect)
 {
 	g_Players_iIgnore[client] |= IGNORE_TEAMSWITCH;
+	return Plugin_Continue;
+}
+
+public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
+{
+	int client = GetClientOfUserId(userid);
+
+	if (!client)
+		return Plugin_Stop;
+
+	if (GetClientTeam(client) == CS_TEAM_NONE)
+		ChangeClientTeam(client, CS_TEAM_SPECTATOR);
+
 	return Plugin_Continue;
 }
 
