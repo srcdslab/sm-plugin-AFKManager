@@ -15,7 +15,6 @@
 #define TAG "{green}[AFK]"
 
 bool g_Players_bEnabled[MAXPLAYERS + 1];
-bool g_Players_bNotJoinedTeam[MAXPLAYERS + 1];
 bool g_Players_bFlagged[MAXPLAYERS + 1];
 int g_Players_iLastAction[MAXPLAYERS + 1];
 float g_Players_fEyePosition[MAXPLAYERS + 1][3];
@@ -332,7 +331,7 @@ public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
 		return Plugin_Stop;
 
 	if (GetClientTeam(client) == CS_TEAM_NONE)
-		g_Players_bNotJoinedTeam[client] = true;
+		ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 
 	return Plugin_Continue;
 }
@@ -394,7 +393,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 			}
 		}
-		else if(g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 || !CheckAdminImmunity(client)) || g_Players_bNotJoinedTeam[client])
+		else if(g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 || !CheckAdminImmunity(client)))
 		{
 			float iTimeleft = g_fKickTime - IdleTime;
 			if(iTimeleft > 0.0)
@@ -407,10 +406,9 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			}
 			else
 			{
-				if(!g_Players_bFlagged[client] || g_Players_bNotJoinedTeam[client])
+				if(!g_Players_bFlagged[client])
 				{
 					CPrintToChat(client, "%s {default}You have been kick-flagged for being inactive.", TAG);
-					g_Players_bNotJoinedTeam[client] = false;
 					g_Players_bFlagged[client] = true;
 				}
 				int FlaggedPlayers = 0;
