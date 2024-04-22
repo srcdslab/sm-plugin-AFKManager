@@ -38,14 +38,17 @@ int g_iMoveMinPlayers;
 int g_iImmunity;
 
 bool g_bEntWatch = false;
+bool g_bEvents;
 int g_iEntWatch;
+
+ConVar g_cvEventEnabled;
 
 public Plugin myinfo =
 {
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.6",
+	version = "1.3.7",
 	url = ""
 };
 
@@ -127,16 +130,31 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	g_bEntWatch = LibraryExists("EntWatch");
+	g_bEvents = LibraryExists("Events");
 }
 public void OnLibraryRemoved(const char[] name)
 {
-	if (StrEqual(name, "EntWatch"))
+	if (strcmp(name, "EntWatch", false) == 0)
 		g_bEntWatch = false;
+	if (strcmp(name, "Events", false) == 0)
+		g_bEvents = false;
 }
 public void OnLibraryAdded(const char[] name)
 {
-	if (StrEqual(name, "EntWatch"))
+	if (strcmp(name, "EntWatch", false) == 0)
 		g_bEntWatch = true;
+	if (strcmp(name, "Events", false) == 0)
+		g_bEvents = true;
+}
+
+public void OnConfigsExecuted()
+{
+	if (!g_bEvents)
+		return;
+
+	g_cvEventEnabled = FindConVar("sm_events_enable");
+	if (g_cvEventEnabled == null)
+		g_bEvents = false;
 }
 
 public void OnMapStart()
@@ -330,7 +348,7 @@ public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
 	if (!client)
 		return Plugin_Stop;
 
-	if (GetClientTeam(client) == CS_TEAM_NONE)
+	if (client && GetClientTeam(client) == CS_TEAM_NONE)
 		ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 
 	return Plugin_Continue;
@@ -340,6 +358,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 {
 	int client;
 	int Clients = 0;
+	bool bEventLoaded = g_bEvents && g_cvEventEnabled.IntValue == 1;
 
 	for(client = 1; client <= MaxClients; client++)
 	{
@@ -356,6 +375,12 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 	for(client = 1; client <= MaxClients; client++)
 	{
 		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
+			continue;
+
+		int flags = GetUserFlagBits(client);
+
+		// Event is loaded, Event Manager have total immunity in all cases
+		if (bEventLoaded && flags & ADMFLAG_CUSTOM4)
 			continue;
 
 		int IdleTime = GetTime() - g_Players_iLastAction[client];
