@@ -38,6 +38,7 @@ int g_iMoveMinPlayers;
 int g_iImmunity;
 
 bool g_bEntWatch = false;
+bool g_bNative_EntWatch = false;
 bool g_bEvents;
 int g_iEntWatch;
 
@@ -48,7 +49,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.7",
+	version = "1.3.8",
 	url = ""
 };
 
@@ -131,20 +132,37 @@ public void OnAllPluginsLoaded()
 {
 	g_bEntWatch = LibraryExists("EntWatch");
 	g_bEvents = LibraryExists("Events");
+	VerifyNatives();
 }
 public void OnLibraryRemoved(const char[] name)
 {
 	if (strcmp(name, "EntWatch", false) == 0)
+	{
 		g_bEntWatch = false;
+		VerifyNative_EntWatch();
+	}
 	if (strcmp(name, "Events", false) == 0)
 		g_bEvents = false;
 }
 public void OnLibraryAdded(const char[] name)
 {
 	if (strcmp(name, "EntWatch", false) == 0)
+	{
 		g_bEntWatch = true;
+		VerifyNative_EntWatch();
+	}
 	if (strcmp(name, "Events", false) == 0)
 		g_bEvents = true;
+}
+
+stock void VerifyNatives()
+{
+	VerifyNative_EntWatch();
+}
+
+stock void VerifyNative_EntWatch()
+{
+	g_bNative_EntWatch = g_bEntWatch && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "EntWatch_HasSpecialItem") == FeatureStatus_Available;
 }
 
 public void OnConfigsExecuted()
@@ -386,7 +404,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		int IdleTime = GetTime() - g_Players_iLastAction[client];
 
 		#if defined _EntWatch_include
-		if (g_bEntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
+		if (g_bNative_EntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
 			continue;
 		#endif
 
