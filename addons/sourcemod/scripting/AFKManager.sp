@@ -49,7 +49,7 @@ public Plugin myinfo =
 	name = "Good AFK Manager",
 	author = "BotoX",
 	description = "A good AFK manager?",
-	version = "1.3.8",
+	version = "1.3.9",
 	url = ""
 };
 
@@ -390,6 +390,8 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 	if(!bMovePlayers && !bKickPlayers)
 		return Plugin_Continue;
 
+	int iCurrentTime = GetTime();
+
 	for(client = 1; client <= MaxClients; client++)
 	{
 		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
@@ -401,7 +403,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		if (bEventLoaded && flags & ADMFLAG_CUSTOM4)
 			continue;
 
-		int IdleTime = GetTime() - g_Players_iLastAction[client];
+		int IdleTime = iCurrentTime - g_Players_iLastAction[client];
 
 		#if defined _EntWatch_include
 		if (g_bNative_EntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
@@ -462,7 +464,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 						continue;
 
 					FlaggedPlayers++;
-					int IdleTime_ = GetTime() - g_Players_iLastAction[client_];
+					int IdleTime_ = iCurrentTime - g_Players_iLastAction[client_];
 
 					if(IdleTime_ > IdleTime)
 						Position++;
@@ -482,7 +484,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			if(!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
 				continue;
 
-			int IdleTime = GetTime() - g_Players_iLastAction[client];
+			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
 			if(IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
 			{
 				InactivePlayer = client;
