@@ -6,6 +6,7 @@
 #undef REQUIRE_PLUGIN
 #tryinclude <zombiereloaded>
 #tryinclude <EntWatch>
+#tryinclude <EventsManager>
 #define REQUIRE_PLUGIN
 
 #pragma semicolon 1
@@ -14,6 +15,7 @@
 #define AFK_CHECK_INTERVAL 5.0
 #define TAG "{green}[AFK]"
 
+bool g_bIsAdmin[MAXPLAYERS + 1];
 bool g_Players_bEnabled[MAXPLAYERS + 1];
 bool g_Players_bFlagged[MAXPLAYERS + 1];
 int g_Players_iLastAction[MAXPLAYERS + 1];
@@ -39,17 +41,15 @@ int g_iImmunity;
 
 bool g_bEntWatch = false;
 bool g_bNative_EntWatch = false;
-bool g_bEvents;
+bool g_bEventLoaded;
 int g_iEntWatch;
-
-ConVar g_cvEventEnabled;
 
 public Plugin myinfo =
 {
 	name = "Good AFK Manager",
-	author = "BotoX",
+	author = "BotoX, .Rushaway, maxime1907",
 	description = "A good AFK manager?",
-	version = "1.3.9",
+	version = "1.3.10",
 	url = ""
 };
 
@@ -76,6 +76,7 @@ public void Cvar_MoveMinPlayers(ConVar convar, const char[] oldValue, const char
 public void Cvar_Immunity(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	g_iImmunity = GetConVarInt(convar);
+	CheckEveryoneAdminImmunity();
 }
 public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[] newValue)
 {
@@ -131,7 +132,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnAllPluginsLoaded()
 {
 	g_bEntWatch = LibraryExists("EntWatch");
-	g_bEvents = LibraryExists("Events");
 	VerifyNatives();
 }
 public void OnLibraryRemoved(const char[] name)
@@ -141,8 +141,6 @@ public void OnLibraryRemoved(const char[] name)
 		g_bEntWatch = false;
 		VerifyNative_EntWatch();
 	}
-	if (strcmp(name, "Events", false) == 0)
-		g_bEvents = false;
 }
 public void OnLibraryAdded(const char[] name)
 {
@@ -151,8 +149,6 @@ public void OnLibraryAdded(const char[] name)
 		g_bEntWatch = true;
 		VerifyNative_EntWatch();
 	}
-	if (strcmp(name, "Events", false) == 0)
-		g_bEvents = true;
 }
 
 stock void VerifyNatives()
@@ -165,27 +161,17 @@ stock void VerifyNative_EntWatch()
 	g_bNative_EntWatch = g_bEntWatch && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "EntWatch_HasSpecialItem") == FeatureStatus_Available;
 }
 
-public void OnConfigsExecuted()
-{
-	if (!g_bEvents)
-		return;
-
-	g_cvEventEnabled = FindConVar("sm_events_enable");
-	if (g_cvEventEnabled == null)
-		g_bEvents = false;
-}
-
 public void OnMapStart()
 {
 	CreateTimer(AFK_CHECK_INTERVAL, Timer_CheckPlayer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
 	/* Handle late load */
-	for(int i = 1; i <= MaxClients; i++)
+	for (int i = 1; i <= MaxClients; i++)
 	{
-		if(IsClientConnected(i))
+		if (IsClientConnected(i))
 		{
 			OnClientConnected(i);
-			if(IsClientInGame(i) && IsClientAuthorized(i))
+			if (IsClientInGame(i) && IsClientAuthorized(i))
 				OnClientPostAdminCheck(i);
 		}
 	}
@@ -198,7 +184,7 @@ public void OnClientConnected(int client)
 
 public void OnClientPostAdminCheck(int client)
 {
-	if(!IsFakeClient(client))
+	if (!IsFakeClient(client))
 		InitializePlayer(client);
 }
 
@@ -207,17 +193,54 @@ public void OnClientDisconnect(int client)
 	ResetPlayer(client);
 }
 
-int CheckAdminImmunity(int client)
+public void OnRebuildAdminCache(AdminCachePart part)
 {
-	if(!IsClientAuthorized(client))
-		return false;
+	// Only do something if admins/groups are being rebuild
+	if (part == AdminCache_Overrides)
+		return;
 
+	CheckEveryoneAdminImmunity();
+}
+
+stock void CheckEveryoneAdminImmunity()
+{
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (!IsClientConnected(i))
+			continue;
+
+		if (IsFakeClient(i))
+			continue;
+		
+		if (!IsClientAuthorized(i))
+			continue;
+
+		if (g_Players_bEnabled[i])
+			continue;
+
+		CheckAdminImmunity(i);
+	}
+}
+
+stock void CheckAdminImmunity(int client)
+{
 	AdminId Id = GetUserAdmin(client);
-	return GetAdminFlag(Id, Admin_Generic);
+
+	if (!g_bEventLoaded)
+		g_bIsAdmin[client] = GetAdminFlag(Id, Admin_Generic);
+	else
+	{
+		g_bIsAdmin[client] = GetAdminFlag(Id, Admin_Custom4);
+
+		// Event is loaded and Event Manager have total immunity in all cases
+		if (g_bIsAdmin[client])
+			g_Players_bEnabled[client] = false;
+	}
 }
 
 void ResetPlayer(int client)
 {
+	g_bIsAdmin[client] = false;
 	g_Players_bEnabled[client] = false;
 	g_Players_bFlagged[client] = false;
 	g_Players_iLastAction[client] = 0;
@@ -228,21 +251,23 @@ void ResetPlayer(int client)
 
 void InitializePlayer(int client)
 {
-	if(!(g_iImmunity == 1 && CheckAdminImmunity(client)))
-	{
-		ResetPlayer(client);
-		g_Players_iLastAction[client] = GetTime();
-		g_Players_bEnabled[client] = true;
-		CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
-	}
+	CheckAdminImmunity(client);
+
+	if (g_bIsAdmin[client] && g_iImmunity == 1)
+		return;
+
+	ResetPlayer(client);
+	g_Players_iLastAction[client] = GetTime();
+	g_Players_bEnabled[client] = true;
+	CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(client > 0 && !IsFakeClient(client))
+	if (client > 0 && !IsFakeClient(client))
 	{
-		if(g_Players_iIgnore[client] & IGNORE_TEAMSWITCH)
+		if (g_Players_iIgnore[client] & IGNORE_TEAMSWITCH)
 			g_Players_iIgnore[client] &= ~IGNORE_TEAMSWITCH;
 		else
 			g_Players_iLastAction[client] = GetTime();
@@ -252,22 +277,22 @@ public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroad
 public void Event_PlayerSpawnPost(Handle event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(client > 0 && !IsFakeClient(client))
+	if (client > 0 && !IsFakeClient(client))
 		g_Players_iIgnore[client] |= IGNORE_EYEPOSITION;
 }
 
 public void Event_PlayerDeathPost(Handle event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(GetEventInt(event, "userid"));
-	if(client > 0 && !IsFakeClient(client))
+	if (client > 0 && !IsFakeClient(client))
 		g_Players_iIgnore[client] |= IGNORE_OBSERVER;
 }
 
 public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
 {
-	for(int client = 1; client <= MaxClients; client++)
+	for (int client = 1; client <= MaxClients; client++)
 	{
-		if(g_Players_bEnabled[client])
+		if (g_Players_bEnabled[client])
 			g_Players_iIgnore[client] |= IGNORE_TEAMSWITCH;
 	}
 }
@@ -279,12 +304,15 @@ public Action Command_Say(int client, const char[] Command, int Args)
 	return Plugin_Continue;
 }
 
-public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVel[3], float fAngles[3], int &iWeapon)
+public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fAngles[3])
 {
-	if(!IsClientInGame(client))
+	if (!IsClientInGame(client))
+		return Plugin_Continue;
+
+	if (!g_Players_bEnabled[client])
 		return Plugin_Continue;
 		
-	if(IsClientObserver(client))
+	if (IsClientObserver(client))
 	{
 		int iSpecMode = g_Players_iSpecMode[client];
 		int iSpecTarget = g_Players_iSpecTarget[client];
@@ -292,34 +320,31 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 		g_Players_iSpecMode[client] = GetEntProp(client, Prop_Send, "m_iObserverMode");
 		g_Players_iSpecTarget[client] = GetEntPropEnt(client, Prop_Send, "m_hObserverTarget");
 
-		if(g_Players_iSpecMode[client] == 1) // OBS_MODE_DEATHCAM
+		if (g_Players_iSpecMode[client] == 1) // OBS_MODE_DEATHCAM
 			g_Players_iIgnore[client] |= IGNORE_OBSERVER;
 
-		if(iSpecTarget && g_Players_iSpecTarget[client] != iSpecTarget)
+		if (iSpecTarget && g_Players_iSpecTarget[client] != iSpecTarget)
 		{
-			if(iSpecTarget == -1 || g_Players_iSpecTarget[client] == -1 ||
+			if (iSpecTarget == -1 || g_Players_iSpecTarget[client] == -1 ||
 				!IsClientInGame(iSpecTarget) || !IsPlayerAlive(iSpecTarget))
 				g_Players_iIgnore[client] |= IGNORE_OBSERVER;
 		}
 
-		if((iSpecMode && g_Players_iSpecMode[client] != iSpecMode) || (iSpecTarget && g_Players_iSpecTarget[client] != iSpecTarget))
+		if ((iSpecMode && g_Players_iSpecMode[client] != iSpecMode) || (iSpecTarget && g_Players_iSpecTarget[client] != iSpecTarget))
 		{
-			if(g_Players_iIgnore[client] & IGNORE_OBSERVER)
+			if (g_Players_iIgnore[client] & IGNORE_OBSERVER)
 				g_Players_iIgnore[client] &= ~IGNORE_OBSERVER;
 			else
 				g_Players_iLastAction[client] = GetTime();
 		}
 	}
 
-	if(((g_Players_fEyePosition[client][0] != fAngles[0]) ||
-		(g_Players_fEyePosition[client][1] != fAngles[1]) ||
-		(g_Players_fEyePosition[client][2] != fAngles[2])) &&
-		(!IsClientObserver(client) ||
-		g_Players_iSpecMode[client] != 4)) // OBS_MODE_IN_EYE
+	if (((g_Players_fEyePosition[client][0] != fAngles[0]) || (g_Players_fEyePosition[client][1] != fAngles[1]) || (g_Players_fEyePosition[client][2] != fAngles[2]))
+		&& (!IsClientObserver(client) || g_Players_iSpecMode[client] != 4)) // OBS_MODE_IN_EYE
 	{
-		if(!((iButtons & IN_LEFT) || (iButtons & IN_RIGHT)))
+		if (!((iButtons & IN_LEFT) || (iButtons & IN_RIGHT)))
 		{
-			if(g_Players_iIgnore[client] & IGNORE_EYEPOSITION)
+			if (g_Players_iIgnore[client] & IGNORE_EYEPOSITION)
 				g_Players_iIgnore[client] &= ~IGNORE_EYEPOSITION;
 			else
 				g_Players_iLastAction[client] = GetTime();
@@ -328,7 +353,7 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 		g_Players_fEyePosition[client] = fAngles;
 	}
 
-	if(g_Players_iButtons[client] != iButtons)
+	if (g_Players_iButtons[client] != iButtons)
 	{
 		g_Players_iLastAction[client] = GetTime();
 		g_Players_iButtons[client] = iButtons;
@@ -339,7 +364,7 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fVe
 
 public Action Teleport_OnEndTouch(const char[] output, int caller, int activator, float delay)
 {
-	if(activator < 1 || activator > MaxClients)
+	if (activator < 1 || activator > MaxClients)
 		return Plugin_Continue;
 
 	g_Players_iIgnore[activator] |= IGNORE_EYEPOSITION;
@@ -375,56 +400,52 @@ public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
 public Action Timer_CheckPlayer(Handle Timer, any Data)
 {
 	int client;
-	int Clients = 0;
-	bool bEventLoaded = g_bEvents && g_cvEventEnabled.IntValue == 1;
+	int iTotalPlayers = 0;
 
-	for(client = 1; client <= MaxClients; client++)
+	for (client = 1; client <= MaxClients; client++)
 	{
-		if(IsClientInGame(client) && !IsFakeClient(client))
-			Clients++;
+		if (IsClientInGame(client) && !IsFakeClient(client))
+			iTotalPlayers++;
 	}
 
-	bool bMovePlayers = (Clients >= g_iMoveMinPlayers && g_fMoveTime > 0.0);
-	bool bKickPlayers = (Clients >= g_iKickMinPlayers && g_fKickTime > 0.0);
+	bool bMovePlayers = (iTotalPlayers >= g_iMoveMinPlayers && g_fMoveTime > 0.0);
+	bool bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
 
-	if(!bMovePlayers && !bKickPlayers)
+	if (!bMovePlayers && !bKickPlayers)
 		return Plugin_Continue;
 
 	int iCurrentTime = GetTime();
 
-	for(client = 1; client <= MaxClients; client++)
+	for (client = 1; client <= MaxClients; client++)
 	{
-		if(!g_Players_bEnabled[client] || !IsClientInGame(client))
+		if (!IsClientInGame(client))
 			continue;
 
-		int flags = GetUserFlagBits(client);
-
-		// Event is loaded, Event Manager have total immunity in all cases
-		if (bEventLoaded && flags & ADMFLAG_CUSTOM4)
+		if (!g_Players_bEnabled[client])
 			continue;
 
 		int IdleTime = iCurrentTime - g_Players_iLastAction[client];
 
-		#if defined _EntWatch_include
+	#if defined _EntWatch_include
 		if (g_bNative_EntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
 			continue;
-		#endif
+	#endif
 
 		int iTeamNum = GetClientTeam(client);
 
-		if(g_Players_bFlagged[client] && (g_fKickTime - IdleTime) > 0.0)
+		if (g_Players_bFlagged[client] && (g_fKickTime - IdleTime) > 0.0)
 		{
 			PrintCenterText(client, "Welcome back!");
 			CPrintToChat(client, "%s {default}You have been un-flagged for being inactive.", TAG);
 			g_Players_bFlagged[client] = false;
 		}
 
-		if(bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && (!g_iImmunity || g_iImmunity == 2 || !CheckAdminImmunity(client)))
+		if (bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && (!g_iImmunity || g_iImmunity == 2 && !g_bIsAdmin[client]))
 		{
 			float iTimeleft = g_fMoveTime - IdleTime;
-			if(iTimeleft > 0.0)
+			if (iTimeleft > 0.0)
 			{
-				if(iTimeleft <= g_fWarnTime)
+				if (iTimeleft <= g_fWarnTime)
 				{
 					PrintCenterText(client, "Warning: If you do not move in %d seconds, you will be moved to spectate.", RoundToFloor(iTimeleft));
 					CPrintToChat(client, "%s {default}Warning: If you do not move in %d seconds, you will be moved to spectate.", TAG, RoundToFloor(iTimeleft));
@@ -438,12 +459,12 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 			}
 		}
-		else if(g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 || !CheckAdminImmunity(client)))
+		else if (g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 && !g_bIsAdmin[client]))
 		{
 			float iTimeleft = g_fKickTime - IdleTime;
-			if(iTimeleft > 0.0)
+			if (iTimeleft > 0.0)
 			{
-				if(iTimeleft <= g_fWarnTime)
+				if (iTimeleft <= g_fWarnTime)
 				{
 					PrintCenterText(client, "Warning: If you do not move in %d seconds, you will be kick-flagged for being inactive.", RoundToFloor(iTimeleft));
 					CPrintToChat(client, "%s {default}Warning: If you do not move in %d seconds, you will be kick-flagged for being inactive.", TAG, RoundToFloor(iTimeleft));
@@ -451,22 +472,22 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			}
 			else
 			{
-				if(!g_Players_bFlagged[client])
+				if (!g_Players_bFlagged[client])
 				{
 					CPrintToChat(client, "%s {default}You have been kick-flagged for being inactive.", TAG);
 					g_Players_bFlagged[client] = true;
 				}
 				int FlaggedPlayers = 0;
 				int Position = 1;
-				for(int client_ = 1; client_ <= MaxClients; client_++)
+				for (int client_ = 1; client_ <= MaxClients; client_++)
 				{
-					if(!g_Players_bFlagged[client_])
+					if (!g_Players_bFlagged[client_])
 						continue;
 
 					FlaggedPlayers++;
 					int IdleTime_ = iCurrentTime - g_Players_iLastAction[client_];
 
-					if(IdleTime_ > IdleTime)
+					if (IdleTime_ > IdleTime)
 						Position++;
 				}
 				PrintCenterText(client, "You have been kick-flagged for being inactive. [%d/%d]", Position, FlaggedPlayers);
@@ -474,35 +495,35 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		}
 	}
 
-	while(bKickPlayers)
+	while (bKickPlayers)
 	{
 		int InactivePlayer = -1;
 		int InactivePlayerTime = 0;
 
-		for(client = 1; client <= MaxClients; client++)
+		for (client = 1; client <= MaxClients; client++)
 		{
-			if(!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
+			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
 				continue;
 
 			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
-			if(IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
+			if (IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
 			{
 				InactivePlayer = client;
 				InactivePlayerTime = IdleTime;
 			}
 		}
 
-		if(InactivePlayer == -1)
+		if (InactivePlayer == -1)
 			break;
 		else
 		{
 			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
 			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
-			Clients--;
+			iTotalPlayers--;
 			g_Players_bFlagged[InactivePlayer] = false;
 		}
 
-		bKickPlayers = (Clients >= g_iKickMinPlayers && g_fKickTime > 0.0);
+		bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
 	}
 
 	return Plugin_Continue;
@@ -512,26 +533,44 @@ public int Native_GetClientIdleTime(Handle plugin, int numParams)
 {
 	int client = GetNativeCell(1);
 
-	if(client > MaxClients || client <= 0)
+	if (client > MaxClients || client <= 0)
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Client is not valid.");
 		return -1;
 	}
 
-	if(!IsClientInGame(client))
+	if (!IsClientInGame(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Client is not in-game.");
 		return -1;
 	}
 
-	if(IsFakeClient(client))
+	if (IsFakeClient(client))
 	{
 		ThrowNativeError(SP_ERROR_NATIVE, "Client is fake-client.");
 		return -1;
 	}
 
-	if(!g_Players_bEnabled[client])
+	if (!g_Players_bEnabled[client])
 		return 0;
 
 	return GetTime() - g_Players_iLastAction[client];
 }
+
+#if defined _EventsManager_included
+public void Events_OnEventPreStarted()
+{
+	g_bEventLoaded = true;
+}
+
+public void Events_OnPromotingAdmins()
+{
+	// Verify Admins who get promoted to Event Manager
+	CheckEveryoneAdminImmunity();
+}
+
+public void Events_OnEventStopped()
+{
+	g_bEventLoaded = false;
+}
+#endif
