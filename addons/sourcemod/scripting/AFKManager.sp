@@ -2,6 +2,7 @@
 #include <sdktools>
 #include <cstrike>
 #include <multicolors>
+#include <AFKManager>
 
 #undef REQUIRE_PLUGIN
 #tryinclude <zombiereloaded>
@@ -13,6 +14,8 @@
 #pragma newdecls required
 
 #define AFK_CHECK_INTERVAL 5.0
+#define SPECTATOR_CHECK_INTERVAL 10.0
+#define MAP_START_DELAY 45
 #define TAG "{green}[AFK]"
 
 bool g_bIsAdmin[MAXPLAYERS + 1];
@@ -24,6 +27,9 @@ int g_Players_iButtons[MAXPLAYERS + 1];
 int g_Players_iSpecMode[MAXPLAYERS + 1];
 int g_Players_iSpecTarget[MAXPLAYERS + 1];
 int g_Players_iIgnore[MAXPLAYERS + 1];
+int g_iConnectedPlayers = 0;
+int g_iSpectatorCount = 0;
+int g_iMapStartTime = 0;
 
 enum
 {
@@ -44,12 +50,14 @@ bool g_bNative_EntWatch = false;
 bool g_bEventLoaded;
 int g_iEntWatch;
 
+int g_iMaxSpectatorsFull;
+
 public Plugin myinfo =
 {
 	name = "Good AFK Manager",
 	author = "BotoX, .Rushaway, maxime1907",
 	description = "A good AFK manager?",
-	version = "1.3.10",
+	version = AFKManager_VERSION,
 	url = ""
 };
 
@@ -107,6 +115,9 @@ public void OnPluginStart()
 	HookConVarChange((cvar = CreateConVar("sm_afk_immunity_items", "1", "AFK immunity for Items Owner: 0 = DISABLE")), Cvar_ImmunityItems);
 	g_iEntWatch = GetConVarInt(cvar);
 
+	HookConVarChange((cvar = CreateConVar("sm_afk_max_spectators_full", "10", "Maximum number of spectators allowed when server is full (0 = unlimited)")), Cvar_MaxSpectatorsFull);
+	g_iMaxSpectatorsFull = GetConVarInt(cvar);
+
 	CloseHandle(cvar);
 
 	AddCommandListener(Command_Say, "say");
@@ -115,6 +126,7 @@ public void OnPluginStart()
 	HookEvent("player_spawn", Event_PlayerSpawnPost, EventHookMode_Post);
 	HookEvent("player_death", Event_PlayerDeathPost, EventHookMode_Post);
 	HookEvent("round_end", Event_RoundEnd, EventHookMode_Pre);
+	HookEvent("player_disconnect", Event_ClientDisconnect, EventHookMode_Pre);
 
 	HookEntityOutput("trigger_teleport", "OnEndTouch", Teleport_OnEndTouch);
 
@@ -134,6 +146,7 @@ public void OnAllPluginsLoaded()
 	g_bEntWatch = LibraryExists("EntWatch");
 	VerifyNatives();
 }
+
 public void OnLibraryRemoved(const char[] name)
 {
 	if (strcmp(name, "EntWatch", false) == 0)
@@ -142,6 +155,7 @@ public void OnLibraryRemoved(const char[] name)
 		VerifyNative_EntWatch();
 	}
 }
+
 public void OnLibraryAdded(const char[] name)
 {
 	if (strcmp(name, "EntWatch", false) == 0)
@@ -163,7 +177,10 @@ stock void VerifyNative_EntWatch()
 
 public void OnMapStart()
 {
+	g_iMapStartTime = GetTime();
 	CreateTimer(AFK_CHECK_INTERVAL, Timer_CheckPlayer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(SPECTATOR_CHECK_INTERVAL, Timer_CheckSpectators, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(AFK_CHECK_INTERVAL, Timer_CheckFullServer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 
 	/* Handle late load */
 	for (int i = 1; i <= MaxClients; i++)
@@ -180,6 +197,7 @@ public void OnMapStart()
 public void OnClientConnected(int client)
 {
 	ResetPlayer(client);
+	UpdatePlayerCounts();
 }
 
 public void OnClientPostAdminCheck(int client)
@@ -188,9 +206,15 @@ public void OnClientPostAdminCheck(int client)
 		InitializePlayer(client);
 }
 
-public void OnClientDisconnect(int client)
+// We do that with Hook to prevent get this functions run during map change
+public void Event_ClientDisconnect(Handle event, const char[] name, bool dontBroadcast)
 {
-	ResetPlayer(client);
+	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	if (client > 0 && client <= MaxClients)
+	{
+		ResetPlayer(client);
+		UpdatePlayerCounts();
+	}
 }
 
 public void OnRebuildAdminCache(AdminCachePart part)
@@ -271,6 +295,8 @@ public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroad
 			g_Players_iIgnore[client] &= ~IGNORE_TEAMSWITCH;
 		else
 			g_Players_iLastAction[client] = GetTime();
+		
+		UpdatePlayerCounts();
 	}
 }
 
@@ -411,6 +437,10 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 	bool bMovePlayers = (iTotalPlayers >= g_iMoveMinPlayers && g_fMoveTime > 0.0);
 	bool bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
 
+	// If server is full, disable kick for spectators
+	if (iTotalPlayers >= MaxClients && g_iMaxSpectatorsFull > 0)
+		bKickPlayers = false;
+
 	if (!bMovePlayers && !bKickPlayers)
 		return Plugin_Continue;
 
@@ -517,10 +547,10 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			break;
 		else
 		{
+			g_Players_bFlagged[InactivePlayer] = false;
 			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
 			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
 			iTotalPlayers--;
-			g_Players_bFlagged[InactivePlayer] = false;
 		}
 
 		bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
@@ -574,3 +604,144 @@ public void Events_OnEventStopped()
 	g_bEventLoaded = false;
 }
 #endif
+
+public void Cvar_MaxSpectatorsFull(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	g_iMaxSpectatorsFull = GetConVarInt(convar);
+}
+
+public Action Timer_CheckFullServer(Handle Timer, any Data)
+{
+	// Check for too many spectators when server is full
+	bool bFullServerMode = g_iConnectedPlayers >= MaxClients;
+
+	// If server is full and we have too many spectators, warn players
+	if (bFullServerMode && g_iMaxSpectatorsFull > 0 && g_iSpectatorCount > g_iMaxSpectatorsFull)
+	{
+		// Warn all spectators
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == CS_TEAM_SPECTATOR && !IsClientSourceTV(i))
+			{
+				CPrintToChat(i, "%s {fullred}Server is full! Join a team now to stay in the game!", TAG);
+				CPrintToChat(i, "%s {fullred}Inactive spectators will be kicked to make room for active players.", TAG);
+			}
+		}
+	}
+
+	return Plugin_Continue;
+}
+
+public Action Timer_CheckSpectators(Handle Timer, any Data)
+{
+	if (g_fKickTime <= 0.0)
+		g_fKickTime = 120.0;
+
+	int iCurrentTime = GetTime();
+
+	// Check for too many spectators when server is full
+	bool bFullServerMode = g_iConnectedPlayers >= MaxClients;
+
+	// If server is full and we have too many spectators, handle that first
+	if (bFullServerMode && g_iMaxSpectatorsFull > 0 && g_iSpectatorCount > g_iMaxSpectatorsFull)
+	{
+		// Find the most inactive spectator to kick
+		int mostInactive = -1;
+		int mostInactiveTime = 0;
+
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsClientInGame(i) || IsFakeClient(i) || GetClientTeam(i) != CS_TEAM_SPECTATOR)
+				continue;
+
+			// Skip SourceTV
+			if (IsClientSourceTV(i))
+				continue;
+
+			// Skip if player has immunity
+			if (g_bIsAdmin[i] && (g_iImmunity == 1 || g_iImmunity == 2))
+				continue;
+
+			int idleTime = iCurrentTime - g_Players_iLastAction[i];
+			
+			// Only consider spectators who have been inactive longer than sm_afk_kick_time
+			if (idleTime >= (g_fKickTime / 2) && idleTime > mostInactiveTime)
+			{
+				mostInactive = i;
+				mostInactiveTime = idleTime;
+			}
+		}
+
+		if (mostInactive != -1)
+		{
+			// Kick the most inactive spectator
+			g_Players_bFlagged[mostInactive] = false;
+			CPrintToChatAll("%s {lightgreen}%N {default}was kicked to make room for active players (inactive for %d seconds).", TAG, mostInactive, mostInactiveTime);
+			KickClient(mostInactive, "[AFK] You were kicked to make room for active players (inactive for %d seconds).", mostInactiveTime);
+			return Plugin_Continue;
+		}
+	}
+
+	// Continue with normal AFK kick logic
+	bool bKickPlayers = (g_iConnectedPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
+
+	// If server is full, disable kick for spectators
+	if (g_iConnectedPlayers >= MaxClients && g_iMaxSpectatorsFull > 0)
+		bKickPlayers = false;
+
+	if (!bKickPlayers)
+		return Plugin_Continue;
+
+	// Check for AFK players to kick
+	while (bKickPlayers)
+	{
+		int InactivePlayer = -1;
+		int InactivePlayerTime = 0;
+
+		for (int client = 1; client <= MaxClients; client++)
+		{
+			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
+				continue;
+
+			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
+			if (IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
+			{
+				InactivePlayer = client;
+				InactivePlayerTime = IdleTime;
+			}
+		}
+
+		if (InactivePlayer == -1)
+			break;
+		else
+		{
+			g_Players_bFlagged[InactivePlayer] = false;
+			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
+			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
+		}
+
+		bKickPlayers = (g_iConnectedPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
+	}
+
+	return Plugin_Continue;
+}
+
+void UpdatePlayerCounts()
+{
+	// Don't update counts during the first 45 seconds after map start
+	if (GetTime() - g_iMapStartTime < MAP_START_DELAY)
+		return;
+
+	g_iConnectedPlayers = 0;
+	g_iSpectatorCount = 0;
+	
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsClientConnected(i))
+		{
+			g_iConnectedPlayers++;
+			if (IsClientInGame(i) && GetClientTeam(i) == CS_TEAM_SPECTATOR)
+				g_iSpectatorCount++;
+		}
+	}
+}
