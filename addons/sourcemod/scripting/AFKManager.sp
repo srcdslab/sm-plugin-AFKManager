@@ -737,11 +737,16 @@ void UpdatePlayerCounts()
 	
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (IsClientConnected(i))
-		{
-			g_iConnectedPlayers++;
-			if (IsClientInGame(i) && GetClientTeam(i) == CS_TEAM_SPECTATOR)
-				g_iSpectatorCount++;
-		}
+		if (!IsClientConnected(i))
+			continue;
+
+		g_iConnectedPlayers++;
+		if (!IsClientInGame(i))
+			continue;
+
+		if (GetClientTeam(i) != CS_TEAM_SPECTATOR)
+			continue;
+
+		g_iSpectatorCount++;
 	}
 }
