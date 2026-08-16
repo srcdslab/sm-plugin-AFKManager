@@ -16,8 +16,8 @@ This repository contains **AFKManager**, a sophisticated SourceMod plugin for ma
 ## Technical Environment
 
 - **Language**: SourcePawn (Source engine scripting language)
-- **Platform**: SourceMod 1.11+ (latest stable release)
-- **Build System**: SourceKnight (Docker-based SourceMod compiler)
+- **Platform**: SourceMod 1.12 (latest stable release)
+- **Build System**: Native GitHub Actions workflow (spcomp via rumblefrog/setup-sp)
 - **CI/CD**: GitHub Actions with automated builds and releases
 
 ## Project Structure
@@ -34,38 +34,33 @@ addons/sourcemod/
 .github/
 ├── workflows/ci.yml            # Build and release automation
 └── dependabot.yml             # Dependency updates
-
-sourceknight.yaml               # Build configuration and dependencies
 ```
 
 ## Build System
 
-### SourceKnight Configuration
-The project uses SourceKnight for building, which provides:
-- Automated dependency management
-- Docker-based compilation environment
-- Consistent builds across platforms
+### Native GitHub Actions Workflow
+The project builds via a native GitHub Actions workflow (`.github/workflows/ci.yml`), which provides:
+- `rumblefrog/setup-sp` to install the SourcePawn compiler (spcomp)
+- Explicit `git clone` of each dependency's repo, with only its include files copied in
+- Consistent builds on `ubuntu-latest` runners
 
-### Dependencies (from sourceknight.yaml)
-- **sourcemod**: Core SourceMod framework (v1.11.0-git6934)
+### Dependencies (from ci.yml)
+- **sourcemod**: Core SourceMod framework (1.12.x, via rumblefrog/setup-sp)
 - **zombiereloaded**: Zombie:Reloaded integration (optional)
 - **multicolors**: Chat color formatting
 - **EntWatch**: Special item holder integration (optional)
 
 ### Build Commands
 ```bash
-# Using GitHub Action (recommended)
-# The CI automatically builds on push/PR using maxime1907/action-sourceknight@v1
-
-# Local build (if sourceknight is installed)
-sourceknight build
+# Using GitHub Actions (recommended)
+# The CI automatically builds on push/PR using the steps in .github/workflows/ci.yml
 
 # Manual compilation (if SourceMod compiler is available)
 spcomp -i addons/sourcemod/scripting/include addons/sourcemod/scripting/AFKManager.sp
 ```
 
 ### Build Outputs
-- Compiled plugin: `.sourceknight/package/addons/sourcemod/plugins/AFKManager.smx`
+- Compiled plugin: `addons/sourcemod/plugins/AFKManager.smx`
 - Package structure mirrors standard SourceMod installation
 
 ## Code Architecture
@@ -181,7 +176,7 @@ if (GetClientIdleTime(client) > 30)
 
 ### Development Setup
 1. Clone repository with dependencies
-2. Use SourceKnight for building (via CI or local setup)
+2. Use the GitHub Actions workflow for building (via CI or local spcomp setup)
 3. Test on development server with various scenarios
 
 ### Key Test Scenarios
