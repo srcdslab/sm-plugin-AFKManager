@@ -4,8 +4,8 @@
 #define _AFKManager_Included
 
 #define AFKManager_V_MAJOR   "1"
-#define AFKManager_V_MINOR   "4"
-#define AFKManager_V_PATCH   "2"
+#define AFKManager_V_MINOR   "5"
+#define AFKManager_V_PATCH   "0"
 
 #define AFKManager_VERSION   AFKManager_V_MAJOR..."."...AFKManager_V_MINOR..."."...AFKManager_V_PATCH
 

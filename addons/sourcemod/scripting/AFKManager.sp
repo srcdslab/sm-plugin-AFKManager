@@ -6,7 +6,7 @@
 
 #undef REQUIRE_PLUGIN
 #tryinclude <zombiereloaded>
-#tryinclude <EntWatch>
+#tryinclude <entWatch_core>
 #tryinclude <EventsManager>
 #define REQUIRE_PLUGIN
 
@@ -143,13 +143,13 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 public void OnAllPluginsLoaded()
 {
-	g_bEntWatch = LibraryExists("EntWatch");
+	g_bEntWatch = LibraryExists("entWatch-core");
 	VerifyNatives();
 }
 
 public void OnLibraryRemoved(const char[] name)
 {
-	if (strcmp(name, "EntWatch", false) == 0)
+	if (strcmp(name, "entWatch-core", false) == 0)
 	{
 		g_bEntWatch = false;
 		VerifyNative_EntWatch();
@@ -158,7 +158,7 @@ public void OnLibraryRemoved(const char[] name)
 
 public void OnLibraryAdded(const char[] name)
 {
-	if (strcmp(name, "EntWatch", false) == 0)
+	if (strcmp(name, "entWatch-core", false) == 0)
 	{
 		g_bEntWatch = true;
 		VerifyNative_EntWatch();
@@ -172,7 +172,7 @@ stock void VerifyNatives()
 
 stock void VerifyNative_EntWatch()
 {
-	g_bNative_EntWatch = g_bEntWatch && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "EntWatch_HasSpecialItem") == FeatureStatus_Available;
+	g_bNative_EntWatch = g_bEntWatch && CanTestFeatures() && GetFeatureStatus(FeatureType_Native, "EW_ClientHasItem") == FeatureStatus_Available;
 }
 
 public void OnMapStart()
@@ -455,8 +455,8 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 
 		int IdleTime = iCurrentTime - g_Players_iLastAction[client];
 
-	#if defined _EntWatch_include
-		if (g_bNative_EntWatch && g_iEntWatch > 0 && EntWatch_HasSpecialItem(client))
+	#if defined _entWatch_included
+		if (g_bNative_EntWatch && g_iEntWatch > 0 && EW_ClientHasItem(client))
 			continue;
 	#endif
 
