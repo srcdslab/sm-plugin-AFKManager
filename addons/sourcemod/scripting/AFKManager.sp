@@ -337,8 +337,10 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fAn
 
 	if (!g_Players_bEnabled[client])
 		return Plugin_Continue;
-		
-	if (IsClientObserver(client))
+
+	bool bIsObserver = IsClientObserver(client);
+
+	if (bIsObserver)
 	{
 		int iSpecMode = g_Players_iSpecMode[client];
 		int iSpecTarget = g_Players_iSpecTarget[client];
@@ -366,7 +368,7 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fAn
 	}
 
 	if (((g_Players_fEyePosition[client][0] != fAngles[0]) || (g_Players_fEyePosition[client][1] != fAngles[1]) || (g_Players_fEyePosition[client][2] != fAngles[2]))
-		&& (!IsClientObserver(client) || g_Players_iSpecMode[client] != 4)) // OBS_MODE_IN_EYE
+		&& (!bIsObserver || g_Players_iSpecMode[client] != 4)) // OBS_MODE_IN_EYE
 	{
 		if (!((iButtons & IN_LEFT) || (iButtons & IN_RIGHT)))
 		{
@@ -381,7 +383,14 @@ public Action OnPlayerRunCmd(int client, int &iButtons, int &iImpulse, float fAn
 
 	if (g_Players_iButtons[client] != iButtons)
 	{
-		g_Players_iLastAction[client] = GetTime();
+		int iChangedButtons = g_Players_iButtons[client] ^ iButtons;
+
+		// Ignore duck-only toggles: a common AFK-bypass macro (e.g. "bind mwheelup +duck")
+		// spams +duck/-duck to keep the button state changing without any real input.
+		// Any other button changing alongside it (attack, use, movement, ...) still counts.
+		if (iChangedButtons != IN_DUCK)
+			g_Players_iLastAction[client] = GetTime();
+
 		g_Players_iButtons[client] = iButtons;
 	}
 
@@ -420,6 +429,36 @@ public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
 		ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 
 	return Plugin_Continue;
+}
+
+// Gathers flagged players who have crossed the kick threshold, sorted from most to least idle.
+// Used to replace an O(n) rescan of every client per kick with a single O(n) pass.
+int GatherKickCandidates(int iCurrentTime, int candidates[MAXPLAYERS + 1], int candidateTimes[MAXPLAYERS + 1])
+{
+	int iCandidateCount = 0;
+
+	for (int client = 1; client <= MaxClients; client++)
+	{
+		if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
+			continue;
+
+		int IdleTime = iCurrentTime - g_Players_iLastAction[client];
+		if (IdleTime < g_fKickTime)
+			continue;
+
+		int iPos = iCandidateCount;
+		while (iPos > 0 && candidateTimes[iPos - 1] < IdleTime)
+		{
+			candidates[iPos] = candidates[iPos - 1];
+			candidateTimes[iPos] = candidateTimes[iPos - 1];
+			iPos--;
+		}
+		candidates[iPos] = client;
+		candidateTimes[iPos] = IdleTime;
+		iCandidateCount++;
+	}
+
+	return iCandidateCount;
 }
 
 public Action Timer_CheckPlayer(Handle Timer, any Data)
@@ -524,35 +563,24 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 		}
 	}
 
-	while (bKickPlayers)
+	if (bKickPlayers)
 	{
-		int InactivePlayer = -1;
-		int InactivePlayerTime = 0;
+		int candidates[MAXPLAYERS + 1];
+		int candidateTimes[MAXPLAYERS + 1];
+		int iCandidateCount = GatherKickCandidates(iCurrentTime, candidates, candidateTimes);
 
-		for (client = 1; client <= MaxClients; client++)
+		for (int i = 0; i < iCandidateCount && bKickPlayers; i++)
 		{
-			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
-				continue;
+			int InactivePlayer = candidates[i];
+			int InactivePlayerTime = candidateTimes[i];
 
-			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
-			if (IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
-			{
-				InactivePlayer = client;
-				InactivePlayerTime = IdleTime;
-			}
-		}
-
-		if (InactivePlayer == -1)
-			break;
-		else
-		{
 			g_Players_bFlagged[InactivePlayer] = false;
 			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
 			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
 			iTotalPlayers--;
-		}
 
-		bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
+			bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
+		}
 	}
 
 	return Plugin_Continue;
@@ -692,32 +720,18 @@ public Action Timer_CheckSpectators(Handle Timer, any Data)
 		return Plugin_Continue;
 
 	// Check for AFK players to kick
-	while (bKickPlayers)
+	int candidates[MAXPLAYERS + 1];
+	int candidateTimes[MAXPLAYERS + 1];
+	int iCandidateCount = GatherKickCandidates(iCurrentTime, candidates, candidateTimes);
+
+	for (int i = 0; i < iCandidateCount && bKickPlayers; i++)
 	{
-		int InactivePlayer = -1;
-		int InactivePlayerTime = 0;
+		int InactivePlayer = candidates[i];
+		int InactivePlayerTime = candidateTimes[i];
 
-		for (int client = 1; client <= MaxClients; client++)
-		{
-			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
-				continue;
-
-			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
-			if (IdleTime >= g_fKickTime && IdleTime > InactivePlayerTime)
-			{
-				InactivePlayer = client;
-				InactivePlayerTime = IdleTime;
-			}
-		}
-
-		if (InactivePlayer == -1)
-			break;
-		else
-		{
-			g_Players_bFlagged[InactivePlayer] = false;
-			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
-			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
-		}
+		g_Players_bFlagged[InactivePlayer] = false;
+		CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
+		KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
 
 		bKickPlayers = (g_iConnectedPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
 	}
