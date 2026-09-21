@@ -275,12 +275,13 @@ void ResetPlayer(int client)
 
 void InitializePlayer(int client)
 {
+	// Reset first: ResetPlayer clears g_bIsAdmin, which the immunity modes rely on
+	ResetPlayer(client);
 	CheckAdminImmunity(client);
 
 	if (g_bIsAdmin[client] && g_iImmunity == 1)
 		return;
 
-	ResetPlayer(client);
 	g_Players_iLastAction[client] = GetTime();
 	g_Players_bEnabled[client] = true;
 	CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
@@ -469,7 +470,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			g_Players_bFlagged[client] = false;
 		}
 
-		if (bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && (!g_iImmunity || g_iImmunity == 2 && !g_bIsAdmin[client]))
+		if (bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && !(g_bIsAdmin[client] && (g_iImmunity == 1 || g_iImmunity == 3)))
 		{
 			float iTimeleft = g_fMoveTime - IdleTime;
 			if (iTimeleft > 0.0)
@@ -488,7 +489,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 			}
 		}
-		else if (g_fKickTime > 0.0 && (!g_iImmunity || g_iImmunity == 3 && !g_bIsAdmin[client]))
+		else if (g_fKickTime > 0.0 && !(g_bIsAdmin[client] && (g_iImmunity == 1 || g_iImmunity == 2)))
 		{
 			float iTimeleft = g_fKickTime - IdleTime;
 			if (iTimeleft > 0.0)
