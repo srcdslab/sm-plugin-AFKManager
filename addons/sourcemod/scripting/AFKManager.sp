@@ -275,12 +275,13 @@ void ResetPlayer(int client)
 
 void InitializePlayer(int client)
 {
+	// Reset first: ResetPlayer clears g_bIsAdmin, which the immunity modes rely on
+	ResetPlayer(client);
 	CheckAdminImmunity(client);
 
 	if (g_bIsAdmin[client] && g_iImmunity == 1)
 		return;
 
-	ResetPlayer(client);
 	g_Players_iLastAction[client] = GetTime();
 	g_Players_bEnabled[client] = true;
 	CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
