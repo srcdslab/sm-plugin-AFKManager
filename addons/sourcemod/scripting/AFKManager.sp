@@ -281,6 +281,13 @@ stock float GetFallbackKickTime()
 	return g_fKickTime > 0.0 ? g_fKickTime : DEFAULT_KICK_TIME;
 }
 
+stock void StartTracking(int client)
+{
+	g_Players_iLastAction[client] = GetTime();
+	g_Players_bEnabled[client] = true;
+	CreateTimer(GetFallbackKickTime(), Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+}
+
 // Re-evaluate the admin status of a connected client and start or stop tracking
 // it accordingly (admin cache rebuild, event start/stop, sm_afk_immunity change)
 stock void RefreshAdminImmunity(int client)
@@ -288,14 +295,14 @@ stock void RefreshAdminImmunity(int client)
 	CheckAdminImmunity(client);
 
 	bool bTracked = !IsTrackingImmune(client);
-	if (bTracked == g_Players_bEnabled[client])
-		return;
+	if (bTracked && !g_Players_bEnabled[client])
+		StartTracking(client);
+	else if (!bTracked)
+		g_Players_bEnabled[client] = false;
 
-	g_Players_bEnabled[client] = bTracked;
-	g_Players_bFlagged[client] = false;
-
-	if (bTracked)
-		g_Players_iLastAction[client] = GetTime();
+	// A pending kick flag must not outlive kick immunity
+	if (IsKickImmune(client))
+		g_Players_bFlagged[client] = false;
 }
 
 void ResetPlayer(int client)
@@ -318,9 +325,7 @@ void InitializePlayer(int client)
 	if (IsTrackingImmune(client))
 		return;
 
-	g_Players_iLastAction[client] = GetTime();
-	g_Players_bEnabled[client] = true;
-	CreateTimer(GetFallbackKickTime(), Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	StartTracking(client);
 }
 
 public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroadcast)
@@ -453,6 +458,10 @@ public Action Timer_CheckPlayerHasJoinTeam(Handle Timer, any userid)
 	if (!client)
 		return Plugin_Stop;
 
+	// The player may have been promoted since the timer was created
+	if (!g_Players_bEnabled[client] || IsMoveImmune(client))
+		return Plugin_Stop;
+
 	if (client && GetClientTeam(client) == CS_TEAM_NONE)
 		ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 
@@ -568,7 +577,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 
 		for (client = 1; client <= MaxClients; client++)
 		{
-			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
+			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client] || IsKickImmune(client))
 				continue;
 
 			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
@@ -737,7 +746,7 @@ public Action Timer_CheckSpectators(Handle Timer, any Data)
 
 		for (int client = 1; client <= MaxClients; client++)
 		{
-			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client])
+			if (!g_Players_bEnabled[client] || !g_Players_bFlagged[client] || IsKickImmune(client))
 				continue;
 
 			int IdleTime = iCurrentTime - g_Players_iLastAction[client];
