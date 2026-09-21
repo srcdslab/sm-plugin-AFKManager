@@ -16,7 +16,13 @@
 #define AFK_CHECK_INTERVAL 5.0
 #define SPECTATOR_CHECK_INTERVAL 10.0
 #define MAP_START_DELAY 45
+#define DEFAULT_KICK_TIME 120.0
 #define TAG "{green}[AFK]"
+
+// sm_afk_immunity modes
+#define IMMUNITY_COMPLETE 1
+#define IMMUNITY_KICK 2
+#define IMMUNITY_MOVE 3
 
 bool g_bIsAdmin[MAXPLAYERS + 1];
 bool g_Players_bEnabled[MAXPLAYERS + 1];
@@ -109,7 +115,7 @@ public void OnPluginStart()
 	HookConVarChange((cvar = CreateConVar("sm_afk_warn_time", "30.0", "Time in seconds remaining before warning")), Cvar_WarnTime);
 	g_fWarnTime = GetConVarFloat(cvar);
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_immunity", "1", "AFK admins immunity: 0 = DISABLED, 1 = COMPLETE, 2 = KICK, 3 = MOVE")), Cvar_Immunity);
+	HookConVarChange((cvar = CreateConVar("sm_afk_immunity", "1", "AFK admins immunity: 0 = DISABLED, 1 = COMPLETE, 2 = KICK, 3 = MOVE", _, true, 0.0, true, 3.0)), Cvar_Immunity);
 	g_iImmunity = GetConVarInt(cvar);
 
 	HookConVarChange((cvar = CreateConVar("sm_afk_immunity_items", "1", "AFK immunity for Items Owner: 0 = DISABLE")), Cvar_ImmunityItems);
@@ -230,19 +236,16 @@ stock void CheckEveryoneAdminImmunity()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
-		if (!IsClientConnected(i))
+		if (!IsClientInGame(i))
 			continue;
 
 		if (IsFakeClient(i))
 			continue;
-		
+
 		if (!IsClientAuthorized(i))
 			continue;
 
-		if (g_Players_bEnabled[i])
-			continue;
-
-		CheckAdminImmunity(i);
+		RefreshAdminImmunity(i);
 	}
 }
 
@@ -250,16 +253,49 @@ stock void CheckAdminImmunity(int client)
 {
 	AdminId Id = GetUserAdmin(client);
 
-	if (!g_bEventLoaded)
-		g_bIsAdmin[client] = GetAdminFlag(Id, Admin_Generic);
-	else
-	{
-		g_bIsAdmin[client] = GetAdminFlag(Id, Admin_Custom4);
+	// While an event is loaded only Event Managers count as admins
+	g_bIsAdmin[client] = GetAdminFlag(Id, g_bEventLoaded ? Admin_Custom4 : Admin_Generic);
+}
 
-		// Event is loaded and Event Manager have total immunity in all cases
-		if (g_bIsAdmin[client])
-			g_Players_bEnabled[client] = false;
-	}
+// Admins are not tracked at all when they have complete immunity. Event Managers
+// have total immunity in all cases while an event is loaded.
+stock bool IsTrackingImmune(int client)
+{
+	return g_bIsAdmin[client] && (g_bEventLoaded || g_iImmunity == IMMUNITY_COMPLETE);
+}
+
+stock bool IsMoveImmune(int client)
+{
+	return g_bIsAdmin[client] && (g_bEventLoaded || g_iImmunity == IMMUNITY_COMPLETE || g_iImmunity == IMMUNITY_MOVE);
+}
+
+stock bool IsKickImmune(int client)
+{
+	return g_bIsAdmin[client] && (g_bEventLoaded || g_iImmunity == IMMUNITY_COMPLETE || g_iImmunity == IMMUNITY_KICK);
+}
+
+// sm_afk_kick_time 0 only disables the AFK kick, the spectator and team join
+// checks still need a usable delay
+stock float GetFallbackKickTime()
+{
+	return g_fKickTime > 0.0 ? g_fKickTime : DEFAULT_KICK_TIME;
+}
+
+// Re-evaluate the admin status of a connected client and start or stop tracking
+// it accordingly (admin cache rebuild, event start/stop, sm_afk_immunity change)
+stock void RefreshAdminImmunity(int client)
+{
+	CheckAdminImmunity(client);
+
+	bool bTracked = !IsTrackingImmune(client);
+	if (bTracked == g_Players_bEnabled[client])
+		return;
+
+	g_Players_bEnabled[client] = bTracked;
+	g_Players_bFlagged[client] = false;
+
+	if (bTracked)
+		g_Players_iLastAction[client] = GetTime();
 }
 
 void ResetPlayer(int client)
@@ -279,12 +315,12 @@ void InitializePlayer(int client)
 	ResetPlayer(client);
 	CheckAdminImmunity(client);
 
-	if (g_bIsAdmin[client] && g_iImmunity == 1)
+	if (IsTrackingImmune(client))
 		return;
 
 	g_Players_iLastAction[client] = GetTime();
 	g_Players_bEnabled[client] = true;
-	CreateTimer(g_fKickTime, Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
+	CreateTimer(GetFallbackKickTime(), Timer_CheckPlayerHasJoinTeam, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 }
 
 public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroadcast)
@@ -470,7 +506,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			g_Players_bFlagged[client] = false;
 		}
 
-		if (bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && !(g_bIsAdmin[client] && (g_iImmunity == 1 || g_iImmunity == 3)))
+		if (bMovePlayers && iTeamNum > CS_TEAM_SPECTATOR && !IsMoveImmune(client))
 		{
 			float iTimeleft = g_fMoveTime - IdleTime;
 			if (iTimeleft > 0.0)
@@ -489,7 +525,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
 			}
 		}
-		else if (g_fKickTime > 0.0 && !(g_bIsAdmin[client] && (g_iImmunity == 1 || g_iImmunity == 2)))
+		else if (g_fKickTime > 0.0 && !IsKickImmune(client))
 		{
 			float iTimeleft = g_fKickTime - IdleTime;
 			if (iTimeleft > 0.0)
@@ -602,6 +638,9 @@ public void Events_OnPromotingAdmins()
 public void Events_OnEventStopped()
 {
 	g_bEventLoaded = false;
+
+	// Event Managers are back to the regular admin immunity
+	CheckEveryoneAdminImmunity();
 }
 #endif
 
@@ -634,9 +673,7 @@ public Action Timer_CheckFullServer(Handle Timer, any Data)
 
 public Action Timer_CheckSpectators(Handle Timer, any Data)
 {
-	if (g_fKickTime <= 0.0)
-		g_fKickTime = 120.0;
-
+	float fSpectatorKickTime = GetFallbackKickTime();
 	int iCurrentTime = GetTime();
 
 	// Check for too many spectators when server is full
@@ -659,13 +696,13 @@ public Action Timer_CheckSpectators(Handle Timer, any Data)
 				continue;
 
 			// Skip if player has immunity
-			if (g_bIsAdmin[i] && (g_iImmunity == 1 || g_iImmunity == 2))
+			if (IsKickImmune(i))
 				continue;
 
 			int idleTime = iCurrentTime - g_Players_iLastAction[i];
 			
 			// Only consider spectators who have been inactive longer than sm_afk_kick_time
-			if (idleTime >= (g_fKickTime / 2) && idleTime > mostInactiveTime)
+			if (idleTime >= (fSpectatorKickTime / 2) && idleTime > mostInactiveTime)
 			{
 				mostInactive = i;
 				mostInactiveTime = idleTime;
