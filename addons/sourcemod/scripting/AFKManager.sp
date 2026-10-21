@@ -69,62 +69,62 @@ public Plugin myinfo =
 
 public void Cvar_KickTime(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_fKickTime = GetConVarFloat(convar);
+	g_fKickTime = convar.FloatValue;
 }
 public void Cvar_MoveTime(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_fMoveTime = GetConVarFloat(convar);
+	g_fMoveTime = convar.FloatValue;
 }
 public void Cvar_WarnTime(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_fWarnTime = GetConVarFloat(convar);
+	g_fWarnTime = convar.FloatValue;
 }
 public void Cvar_KickMinPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_iKickMinPlayers = GetConVarInt(convar);
+	g_iKickMinPlayers = convar.IntValue;
 }
 public void Cvar_MoveMinPlayers(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_iMoveMinPlayers = GetConVarInt(convar);
+	g_iMoveMinPlayers = convar.IntValue;
 }
 public void Cvar_Immunity(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_iImmunity = GetConVarInt(convar);
+	g_iImmunity = convar.IntValue;
 	CheckEveryoneAdminImmunity();
 }
 public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_iEntWatch = GetConVarInt(convar);
+	g_iEntWatch = convar.IntValue;
 }
 
 public void OnPluginStart()
 {
 	ConVar cvar;
-	HookConVarChange((cvar = CreateConVar("sm_afk_move_min", "10", "Min players for AFK move")), Cvar_MoveMinPlayers);
-	g_iMoveMinPlayers = GetConVarInt(cvar);
+	((cvar = CreateConVar("sm_afk_move_min", "10", "Min players for AFK move"))).AddChangeHook(Cvar_MoveMinPlayers);
+	g_iMoveMinPlayers = cvar.IntValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_kick_min", "30", "Min players for AFK kick")), Cvar_KickMinPlayers);
-	g_iKickMinPlayers = GetConVarInt(cvar);
+	((cvar = CreateConVar("sm_afk_kick_min", "30", "Min players for AFK kick"))).AddChangeHook(Cvar_KickMinPlayers);
+	g_iKickMinPlayers = cvar.IntValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_move_time", "60.0", "Time in seconds for AFK Move. 0 = DISABLED")), Cvar_MoveTime);
-	g_fMoveTime = GetConVarFloat(cvar);
+	((cvar = CreateConVar("sm_afk_move_time", "60.0", "Time in seconds for AFK Move. 0 = DISABLED"))).AddChangeHook(Cvar_MoveTime);
+	g_fMoveTime = cvar.FloatValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_kick_time", "120.0", "Time in seconds to AFK Kick. 0 = DISABLED")), Cvar_KickTime);
-	g_fKickTime = GetConVarFloat(cvar);
+	((cvar = CreateConVar("sm_afk_kick_time", "120.0", "Time in seconds to AFK Kick. 0 = DISABLED"))).AddChangeHook(Cvar_KickTime);
+	g_fKickTime = cvar.FloatValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_warn_time", "30.0", "Time in seconds remaining before warning")), Cvar_WarnTime);
-	g_fWarnTime = GetConVarFloat(cvar);
+	((cvar = CreateConVar("sm_afk_warn_time", "30.0", "Time in seconds remaining before warning"))).AddChangeHook(Cvar_WarnTime);
+	g_fWarnTime = cvar.FloatValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_immunity", "1", "AFK admins immunity: 0 = DISABLED, 1 = COMPLETE, 2 = KICK, 3 = MOVE", _, true, 0.0, true, 3.0)), Cvar_Immunity);
-	g_iImmunity = GetConVarInt(cvar);
+	((cvar = CreateConVar("sm_afk_immunity", "1", "AFK admins immunity: 0 = DISABLED, 1 = COMPLETE, 2 = KICK, 3 = MOVE", _, true, 0.0, true, 3.0))).AddChangeHook(Cvar_Immunity);
+	g_iImmunity = cvar.IntValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_immunity_items", "1", "AFK immunity for Items Owner: 0 = DISABLE")), Cvar_ImmunityItems);
-	g_iEntWatch = GetConVarInt(cvar);
+	((cvar = CreateConVar("sm_afk_immunity_items", "1", "AFK immunity for Items Owner: 0 = DISABLE"))).AddChangeHook(Cvar_ImmunityItems);
+	g_iEntWatch = cvar.IntValue;
 
-	HookConVarChange((cvar = CreateConVar("sm_afk_max_spectators_full", "10", "Maximum number of spectators allowed when server is full (0 = unlimited)")), Cvar_MaxSpectatorsFull);
-	g_iMaxSpectatorsFull = GetConVarInt(cvar);
+	((cvar = CreateConVar("sm_afk_max_spectators_full", "10", "Maximum number of spectators allowed when server is full (0 = unlimited)"))).AddChangeHook(Cvar_MaxSpectatorsFull);
+	g_iMaxSpectatorsFull = cvar.IntValue;
 
-	CloseHandle(cvar);
+	delete cvar;
 
 	AddCommandListener(Command_Say, "say");
 	AddCommandListener(Command_Say, "say_team");
@@ -213,9 +213,9 @@ public void OnClientPostAdminCheck(int client)
 }
 
 // We do that with Hook to prevent get this functions run during map change
-public void Event_ClientDisconnect(Handle event, const char[] name, bool dontBroadcast)
+public void Event_ClientDisconnect(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (client > 0 && client <= MaxClients)
 	{
 		ResetPlayer(client);
@@ -328,9 +328,9 @@ void InitializePlayer(int client)
 	StartTracking(client);
 }
 
-public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroadcast)
+public void Event_PlayerTeamPost(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (client > 0 && !IsFakeClient(client))
 	{
 		if (g_Players_iIgnore[client] & IGNORE_TEAMSWITCH)
@@ -342,21 +342,21 @@ public void Event_PlayerTeamPost(Handle event, const char[] name, bool dontBroad
 	}
 }
 
-public void Event_PlayerSpawnPost(Handle event, const char[] name, bool dontBroadcast)
+public void Event_PlayerSpawnPost(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (client > 0 && !IsFakeClient(client))
 		g_Players_iIgnore[client] |= IGNORE_EYEPOSITION;
 }
 
-public void Event_PlayerDeathPost(Handle event, const char[] name, bool dontBroadcast)
+public void Event_PlayerDeathPost(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(GetEventInt(event, "userid"));
+	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (client > 0 && !IsFakeClient(client))
 		g_Players_iIgnore[client] |= IGNORE_OBSERVER;
 }
 
-public void Event_RoundEnd(Handle event, const char[] name, bool dontBroadcast)
+public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
 	for (int client = 1; client <= MaxClients; client++)
 	{
@@ -683,7 +683,7 @@ public void Events_OnEventStopped()
 
 public void Cvar_MaxSpectatorsFull(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	g_iMaxSpectatorsFull = GetConVarInt(convar);
+	g_iMaxSpectatorsFull = convar.IntValue;
 }
 
 public Action Timer_CheckFullServer(Handle Timer, any Data)
