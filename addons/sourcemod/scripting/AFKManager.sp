@@ -99,6 +99,8 @@ public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[
 
 public void OnPluginStart()
 {
+	LoadTranslations("AFKManager.phrases");
+
 	ConVar cvar;
 	((cvar = CreateConVar("sm_afk_move_min", "10", "Min players for AFK move"))).AddChangeHook(Cvar_MoveMinPlayers);
 	g_iMoveMinPlayers = cvar.IntValue;
@@ -549,8 +551,8 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 
 		if (g_Players_bFlagged[client] && (g_fKickTime - IdleTime) > 0.0)
 		{
-			PrintCenterText(client, "Welcome back!");
-			CPrintToChat(client, "%s {default}You have been un-flagged for being inactive.", TAG);
+			PrintCenterText(client, "%t", "AFK Welcome Back");
+			CPrintToChat(client, "%s {default}%t", TAG, "AFK Unflagged");
 			g_Players_bFlagged[client] = false;
 		}
 
@@ -561,13 +563,13 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			{
 				if (iTimeleft <= g_fWarnTime)
 				{
-					PrintCenterText(client, "Warning: If you do not move in %d seconds, you will be moved to spectate.", RoundToFloor(iTimeleft));
-					CPrintToChat(client, "%s {default}Warning: If you do not move in %d seconds, you will be moved to spectate.", TAG, RoundToFloor(iTimeleft));
+					PrintCenterText(client, "%t", "AFK Move Warning", RoundToFloor(iTimeleft));
+					CPrintToChat(client, "%s {default}%t", TAG, "AFK Move Warning", RoundToFloor(iTimeleft));
 				}
 			}
 			else
 			{
-				CPrintToChatAll("%s {lightgreen}%N {default}was moved to spectate for being AFK too long.", TAG, client);
+				CPrintToChatAll("%s %t", TAG, "AFK Moved To Spectate", client);
 				ForcePlayerSuicide(client);
 				g_Players_iIgnore[client] |= IGNORE_TEAMSWITCH;
 				ChangeClientTeam(client, CS_TEAM_SPECTATOR);
@@ -580,15 +582,15 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			{
 				if (iTimeleft <= g_fWarnTime)
 				{
-					PrintCenterText(client, "Warning: If you do not move in %d seconds, you will be kick-flagged for being inactive.", RoundToFloor(iTimeleft));
-					CPrintToChat(client, "%s {default}Warning: If you do not move in %d seconds, you will be kick-flagged for being inactive.", TAG, RoundToFloor(iTimeleft));
+					PrintCenterText(client, "%t", "AFK Kick Warning", RoundToFloor(iTimeleft));
+					CPrintToChat(client, "%s {default}%t", TAG, "AFK Kick Warning", RoundToFloor(iTimeleft));
 				}
 			}
 			else
 			{
 				if (!g_Players_bFlagged[client])
 				{
-					CPrintToChat(client, "%s {default}You have been kick-flagged for being inactive.", TAG);
+					CPrintToChat(client, "%s {default}%t", TAG, "AFK Kick Flagged");
 					g_Players_bFlagged[client] = true;
 				}
 				int FlaggedPlayers = 0;
@@ -604,7 +606,7 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 					if (IdleTime_ > IdleTime)
 						Position++;
 				}
-				PrintCenterText(client, "You have been kick-flagged for being inactive. [%d/%d]", Position, FlaggedPlayers);
+				PrintCenterText(client, "%t", "AFK Kick Flagged Position", Position, FlaggedPlayers);
 			}
 		}
 	}
@@ -621,8 +623,8 @@ public Action Timer_CheckPlayer(Handle Timer, any Data)
 			int InactivePlayerTime = candidateTimes[i];
 
 			g_Players_bFlagged[InactivePlayer] = false;
-			CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
-			KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
+			CPrintToChatAll("%s %t", TAG, "AFK Kicked", InactivePlayer, InactivePlayerTime);
+			KickClient(InactivePlayer, "[AFK] %t", "AFK Kick Reason", InactivePlayerTime);
 			iTotalPlayers--;
 
 			bKickPlayers = (iTotalPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
@@ -699,8 +701,8 @@ public Action Timer_CheckFullServer(Handle Timer, any Data)
 		{
 			if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == CS_TEAM_SPECTATOR && !IsClientSourceTV(i))
 			{
-				CPrintToChat(i, "%s {fullred}Server is full! Join a team now to stay in the game!", TAG);
-				CPrintToChat(i, "%s {fullred}Inactive spectators will be kicked to make room for active players.", TAG);
+				CPrintToChat(i, "%s {fullred}%t", TAG, "AFK Server Full");
+				CPrintToChat(i, "%s {fullred}%t", TAG, "AFK Spectators Will Be Kicked");
 			}
 		}
 	}
@@ -750,8 +752,8 @@ public Action Timer_CheckSpectators(Handle Timer, any Data)
 		{
 			// Kick the most inactive spectator
 			g_Players_bFlagged[mostInactive] = false;
-			CPrintToChatAll("%s {lightgreen}%N {default}was kicked to make room for active players (inactive for %d seconds).", TAG, mostInactive, mostInactiveTime);
-			KickClient(mostInactive, "[AFK] You were kicked to make room for active players (inactive for %d seconds).", mostInactiveTime);
+			CPrintToChatAll("%s %t", TAG, "AFK Kicked For Room", mostInactive, mostInactiveTime);
+			KickClient(mostInactive, "[AFK] %t", "AFK Kick For Room Reason", mostInactiveTime);
 			return Plugin_Continue;
 		}
 	}
@@ -777,8 +779,8 @@ public Action Timer_CheckSpectators(Handle Timer, any Data)
 		int InactivePlayerTime = candidateTimes[i];
 
 		g_Players_bFlagged[InactivePlayer] = false;
-		CPrintToChatAll("%s {lightgreen}%N {default}was kicked for being AFK too long. (%d seconds)", TAG, InactivePlayer, InactivePlayerTime);
-		KickClient(InactivePlayer, "[AFK] You were kicked for being AFK too long. (%d seconds)", InactivePlayerTime);
+		CPrintToChatAll("%s %t", TAG, "AFK Kicked", InactivePlayer, InactivePlayerTime);
+		KickClient(InactivePlayer, "[AFK] %t", "AFK Kick Reason", InactivePlayerTime);
 
 		bKickPlayers = (g_iConnectedPlayers >= g_iKickMinPlayers && g_fKickTime > 0.0);
 	}

@@ -1,0 +1,141 @@
+"Phrases"
+{
+	"AFK Welcome Back"
+	{
+		"en"		"Welcome back!"
+		"fr"		"Bon retour !"
+		"ru"		"С возвращением!"
+		"es"		"¡Bienvenido de nuevo!"
+		"de"		"Willkommen zurück!"
+		"pt"		"Bem-vindo de volta!"
+		"chi"		"欢迎回来！"
+	}
+	"AFK Unflagged"
+	{
+		"en"		"You have been un-flagged for being inactive."
+		"fr"		"Vous n'êtes plus marqué comme inactif."
+		"ru"		"Вы больше не помечены как неактивный игрок."
+		"es"		"Ya no estás marcado como inactivo."
+		"de"		"Du bist nicht mehr als inaktiv markiert."
+		"pt"		"Você não está mais marcado como inativo."
+		"chi"		"你已不再被标记为挂机。"
+	}
+	"AFK Move Warning"
+	{
+		"#format"	"{1:d}"
+		"en"		"Warning: If you do not move in {1} seconds, you will be moved to spectate."
+		"fr"		"Attention : si vous ne bougez pas dans {1} secondes, vous serez déplacé en spectateur."
+		"ru"		"Внимание: если вы не начнёте двигаться в течение {1} сек., вас переместят в наблюдатели."
+		"es"		"Aviso: si no te mueves en {1} segundos, serás movido a espectador."
+		"de"		"Warnung: Wenn du dich nicht innerhalb von {1} Sekunden bewegst, wirst du zu den Zuschauern verschoben."
+		"pt"		"Aviso: se você não se mover em {1} segundos, será movido para espectador."
+		"chi"		"警告：如果你在 {1} 秒内不移动，将被移至观察者。"
+	}
+	"AFK Moved To Spectate"
+	{
+		"#format"	"{1:N}"
+		"en"		"{lightgreen}{1} {default}was moved to spectate for being AFK too long."
+		"fr"		"{lightgreen}{1} {default}a été déplacé en spectateur pour être resté AFK trop longtemps."
+		"ru"		"{lightgreen}{1} {default}перемещён в наблюдатели за слишком долгий AFK."
+		"es"		"{lightgreen}{1} {default}fue movido a espectador por estar AFK demasiado tiempo."
+		"de"		"{lightgreen}{1} {default}wurde wegen zu langer AFK-Zeit zu den Zuschauern verschoben."
+		"pt"		"{lightgreen}{1} {default}foi movido para espectador por ficar AFK por muito tempo."
+		"chi"		"{lightgreen}{1} {default}因挂机时间过长被移至观察者。"
+	}
+	"AFK Kick Warning"
+	{
+		"#format"	"{1:d}"
+		"en"		"Warning: If you do not move in {1} seconds, you will be kick-flagged for being inactive."
+		"fr"		"Attention : si vous ne bougez pas dans {1} secondes, vous serez marqué pour kick pour inactivité."
+		"ru"		"Внимание: если вы не начнёте двигаться в течение {1} сек., вас пометят на кик за неактивность."
+		"es"		"Aviso: si no te mueves en {1} segundos, serás marcado para expulsión por inactividad."
+		"de"		"Warnung: Wenn du dich nicht innerhalb von {1} Sekunden bewegst, wirst du wegen Inaktivität zum Kick markiert."
+		"pt"		"Aviso: se você não se mover em {1} segundos, será marcado para kick por inatividade."
+		"chi"		"警告：如果你在 {1} 秒内不移动，将因挂机被标记为待踢出。"
+	}
+	"AFK Kick Flagged"
+	{
+		"en"		"You have been kick-flagged for being inactive."
+		"fr"		"Vous avez été marqué pour kick pour inactivité."
+		"ru"		"Вы помечены на кик за неактивность."
+		"es"		"Has sido marcado para expulsión por inactividad."
+		"de"		"Du wurdest wegen Inaktivität zum Kick markiert."
+		"pt"		"Você foi marcado para kick por inatividade."
+		"chi"		"你已因挂机被标记为待踢出。"
+	}
+	"AFK Kick Flagged Position"
+	{
+		"#format"	"{1:d},{2:d}"
+		"en"		"You have been kick-flagged for being inactive. [{1}/{2}]"
+		"fr"		"Vous avez été marqué pour kick pour inactivité. [{1}/{2}]"
+		"ru"		"Вы помечены на кик за неактивность. [{1}/{2}]"
+		"es"		"Has sido marcado para expulsión por inactividad. [{1}/{2}]"
+		"de"		"Du wurdest wegen Inaktivität zum Kick markiert. [{1}/{2}]"
+		"pt"		"Você foi marcado para kick por inatividade. [{1}/{2}]"
+		"chi"		"你已因挂机被标记为待踢出。[{1}/{2}]"
+	}
+	"AFK Kicked"
+	{
+		"#format"	"{1:N},{2:d}"
+		"en"		"{lightgreen}{1} {default}was kicked for being AFK too long. ({2} seconds)"
+		"fr"		"{lightgreen}{1} {default}a été kické pour être resté AFK trop longtemps. ({2} secondes)"
+		"ru"		"{lightgreen}{1} {default}кикнут за слишком долгий AFK. ({2} сек.)"
+		"es"		"{lightgreen}{1} {default}fue expulsado por estar AFK demasiado tiempo. ({2} segundos)"
+		"de"		"{lightgreen}{1} {default}wurde wegen zu langer AFK-Zeit gekickt. ({2} Sekunden)"
+		"pt"		"{lightgreen}{1} {default}foi kickado por ficar AFK por muito tempo. ({2} segundos)"
+		"chi"		"{lightgreen}{1} {default}因挂机时间过长被踢出。（{2} 秒）"
+	}
+	"AFK Kick Reason"
+	{
+		"#format"	"{1:d}"
+		"en"		"You were kicked for being AFK too long. ({1} seconds)"
+		"fr"		"Vous avez été kické pour être resté AFK trop longtemps. ({1} secondes)"
+		"ru"		"Вы кикнуты за слишком долгий AFK. ({1} сек.)"
+		"es"		"Fuiste expulsado por estar AFK demasiado tiempo. ({1} segundos)"
+		"de"		"Du wurdest wegen zu langer AFK-Zeit gekickt. ({1} Sekunden)"
+		"pt"		"Você foi kickado por ficar AFK por muito tempo. ({1} segundos)"
+		"chi"		"你因挂机时间过长被踢出。（{1} 秒）"
+	}
+	"AFK Server Full"
+	{
+		"en"		"Server is full! Join a team now to stay in the game!"
+		"fr"		"Le serveur est plein ! Rejoignez une équipe maintenant pour rester en jeu !"
+		"ru"		"Сервер заполнен! Присоединитесь к команде, чтобы остаться в игре!"
+		"es"		"¡El servidor está lleno! ¡Únete a un equipo ahora para seguir en la partida!"
+		"de"		"Der Server ist voll! Tritt jetzt einem Team bei, um im Spiel zu bleiben!"
+		"pt"		"O servidor está cheio! Entre em um time agora para continuar no jogo!"
+		"chi"		"服务器已满！请立即加入队伍以留在游戏中！"
+	}
+	"AFK Spectators Will Be Kicked"
+	{
+		"en"		"Inactive spectators will be kicked to make room for active players."
+		"fr"		"Les spectateurs inactifs seront kickés pour laisser la place aux joueurs actifs."
+		"ru"		"Неактивные наблюдатели будут кикнуты, чтобы освободить место для активных игроков."
+		"es"		"Los espectadores inactivos serán expulsados para dejar sitio a los jugadores activos."
+		"de"		"Inaktive Zuschauer werden gekickt, um Platz für aktive Spieler zu schaffen."
+		"pt"		"Espectadores inativos serão kickados para dar lugar a jogadores ativos."
+		"chi"		"不活跃的观察者将被踢出，为活跃玩家腾出位置。"
+	}
+	"AFK Kicked For Room"
+	{
+		"#format"	"{1:N},{2:d}"
+		"en"		"{lightgreen}{1} {default}was kicked to make room for active players (inactive for {2} seconds)."
+		"fr"		"{lightgreen}{1} {default}a été kické pour laisser la place aux joueurs actifs (inactif depuis {2} secondes)."
+		"ru"		"{lightgreen}{1} {default}кикнут, чтобы освободить место для активных игроков (неактивен {2} сек.)."
+		"es"		"{lightgreen}{1} {default}fue expulsado para dejar sitio a jugadores activos (inactivo durante {2} segundos)."
+		"de"		"{lightgreen}{1} {default}wurde gekickt, um Platz für aktive Spieler zu schaffen ({2} Sekunden inaktiv)."
+		"pt"		"{lightgreen}{1} {default}foi kickado para dar lugar a jogadores ativos (inativo por {2} segundos)."
+		"chi"		"{lightgreen}{1} {default}被踢出，为活跃玩家腾出位置（已挂机 {2} 秒）。"
+	}
+	"AFK Kick For Room Reason"
+	{
+		"#format"	"{1:d}"
+		"en"		"You were kicked to make room for active players (inactive for {1} seconds)."
+		"fr"		"Vous avez été kické pour laisser la place aux joueurs actifs (inactif depuis {1} secondes)."
+		"ru"		"Вы кикнуты, чтобы освободить место для активных игроков (неактивны {1} сек.)."
+		"es"		"Fuiste expulsado para dejar sitio a jugadores activos (inactivo durante {1} segundos)."
+		"de"		"Du wurdest gekickt, um Platz für aktive Spieler zu schaffen ({1} Sekunden inaktiv)."
+		"pt"		"Você foi kickado para dar lugar a jogadores ativos (inativo por {1} segundos)."
+		"chi"		"你被踢出，为活跃玩家腾出位置（已挂机 {1} 秒）。"
+	}
+}
