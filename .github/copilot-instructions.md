@@ -25,7 +25,7 @@ This repository contains **AFKManager**, a sophisticated SourceMod plugin for ma
 ```
 addons/sourcemod/
 ├── scripting/
-│   ├── AFKManager.sp           # Main plugin source (~750 lines)
+│   ├── AFKManager.sp           # Main plugin source (~1400 lines)
 │   └── include/
 │       └── AFKManager.inc      # Native function definitions and API
 ├── plugins/                    # Compiled output (gitignored)
@@ -66,12 +66,31 @@ spcomp -i addons/sourcemod/scripting/include addons/sourcemod/scripting/AFKManag
 ## Code Architecture
 
 ### Core Detection System
-The AFK detection system uses multiple methods in `OnPlayerRunCmd`:
+Two detections run side by side; `sm_afk_detection` picks the one that warns, moves and kicks
+(0 = legacy only, 1 = legacy acts and the new one is compared to it, 2 = new one acts).
 
+**Legacy detection** (`OnPlayerRunCmd`), any change counts as activity:
 1. **Eye Position Tracking**: Monitors view angle changes
 2. **Button Input**: Detects any button presses/releases
 3. **Spectator Behavior**: Tracks spectator mode and target changes
-4. **Chat Activity**: Monitors say/say_team commands
+4. **Team changes** (`player_team`) and **Chat Activity** (say/say_team)
+
+**New detection** (`OnPlayerRunCmdPre`, raw client input before other plugins change it), only
+what a human produces counts:
+1. **Mouse movement**: the usercmd `mouse[2]` deltas, summed over one second against
+   `sm_afk_mouse_threshold`. The client only fills them from the physical mouse, so server-side
+   view changes (teleports, first-person spectating) never count.
+2. **Key presses**: a button going down (held buttons never count), weapon switch, impulse.
+3. **Commands** sent by the player (`jointeam`, `menuselect`, `spec_next`, ...) and **chat**.
+
+Mouse and chat keep a player active on their own; keys and commands only for
+`sm_afk_key_only_time` seconds after the last mouse movement or chat message, so a key macro can
+only delay the AFK by that much (`GetNewIdleTime`).
+
+The new detection is only used once the server is seen receiving mouse movement (`g_iHealth`,
+checked on the first 2000 view changes of living players). In modes 1 and 2 every disagreement
+between the two detections is written to `logs/afkmanager_detection.log` when it ends, and
+`sm_afk_status [target]` shows how both see the players.
 
 ### Key Global Variables
 ```sourcepawn
@@ -105,6 +124,10 @@ sm_afk_kick_min "30"            // Minimum players for kicks
 sm_afk_immunity "1"             // Admin immunity level
 sm_afk_immunity_items "1"       // Item holder immunity
 sm_afk_max_spectators_full "10" // Max spectators when full
+sm_afk_detection "1"            // 0 = legacy, 1 = legacy + comparison, 2 = new detection
+sm_afk_mouse_threshold "45"     // Mouse movement per second that counts (45 = about 1 degree)
+sm_afk_key_only_time "120"      // Seconds keys/commands alone keep a player active
+sm_afk_detection_log "1"        // Log disagreements between the two detections
 ```
 
 ### Immunity Levels
