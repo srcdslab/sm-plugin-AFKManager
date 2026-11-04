@@ -4,13 +4,14 @@
 #define _AFKManager_Included
 
 #define AFKManager_V_MAJOR   "1"
-#define AFKManager_V_MINOR   "5"
-#define AFKManager_V_PATCH   "4"
+#define AFKManager_V_MINOR   "6"
+#define AFKManager_V_PATCH   "0"
 
 #define AFKManager_VERSION   AFKManager_V_MAJOR..."."...AFKManager_V_MINOR..."."...AFKManager_V_PATCH
 
 /**
- * Gets the idle time of a client in seconds
+ * Gets the idle time of a client in seconds, as seen by the detection that warns, moves
+ * and kicks players (see sm_afk_detection)
  *
  * @param client        Client index
  * @return             Number of seconds client has been idle, 0 if not being tracked, -1 on error
