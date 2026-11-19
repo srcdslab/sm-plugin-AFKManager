@@ -9,6 +9,12 @@
 		"de"		"Willkommen zurück!"
 		"pt"		"Bem-vindo de volta!"
 		"chi"		"欢迎回来！"
+		"pl"		"Witaj z powrotem!"
+		"tr"		"Tekrar hoş geldin!"
+		"it"		"Bentornato!"
+		"ua"		"З поверненням!"
+		"zho"		"歡迎回來！"
+		"cze"		"Vítej zpět!"
 	}
 	"AFK Unflagged"
 	{
@@ -19,6 +25,12 @@
 		"de"		"Du bist nicht mehr als inaktiv markiert."
 		"pt"		"Você não está mais marcado como inativo."
 		"chi"		"你已不再被标记为挂机。"
+		"pl"		"Nie jesteś już oznaczony jako nieaktywny."
+		"tr"		"Artık pasif olarak işaretli değilsin."
+		"it"		"Non sei più segnalato come inattivo."
+		"ua"		"Тебе більше не позначено як неактивного."
+		"zho"		"你已不再被標記為掛機。"
+		"cze"		"Už nejsi označen jako neaktivní."
 	}
 	"AFK Move Warning"
 	{
@@ -30,6 +42,12 @@
 		"de"		"Warnung: Wenn du dich nicht innerhalb von {1} Sekunden bewegst, wirst du zu den Zuschauern verschoben."
 		"pt"		"Aviso: se você não se mover em {1} segundos, será movido para espectador."
 		"chi"		"警告：如果你在 {1} 秒内不移动，将被移至观察者。"
+		"pl"		"Ostrzeżenie: jeśli nie ruszysz się w ciągu {1} s, zostaniesz przeniesiony do obserwatorów."
+		"tr"		"Uyarı: {1} saniye içinde hareket etmezsen izleyicilere taşınacaksın."
+		"it"		"Attenzione: se non ti muovi entro {1} secondi, verrai spostato tra gli spettatori."
+		"ua"		"Увага: якщо ти не почнеш рухатися протягом {1} с, тебе перемістять до спостерігачів."
+		"zho"		"警告：如果你在 {1} 秒內不移動，將被移至觀察者。"
+		"cze"		"Varování: pokud se do {1} sekund nepohneš, budeš přesunut mezi diváky."
 	}
 	"AFK Moved To Spectate"
 	{
@@ -41,6 +59,12 @@
 		"de"		"{lightgreen}{1} {default}wurde wegen zu langer AFK-Zeit zu den Zuschauern verschoben."
 		"pt"		"{lightgreen}{1} {default}foi movido para espectador por ficar AFK por muito tempo."
 		"chi"		"{lightgreen}{1} {default}因挂机时间过长被移至观察者。"
+		"pl"		"{lightgreen}{1} {default}został przeniesiony do obserwatorów za zbyt długie AFK."
+		"tr"		"{lightgreen}{1} {default}çok uzun süre AFK kaldığı için izleyicilere taşındı."
+		"it"		"{lightgreen}{1} {default}è stato spostato tra gli spettatori per essere rimasto AFK troppo a lungo."
+		"ua"		"{lightgreen}{1} {default}переміщено до спостерігачів за надто довгий AFK."
+		"zho"		"{lightgreen}{1} {default}因掛機時間過長被移至觀察者。"
+		"cze"		"{lightgreen}{1} {default}byl přesunut mezi diváky za příliš dlouhé AFK."
 	}
 	"AFK Kick Warning"
 	{
@@ -52,6 +76,12 @@
 		"de"		"Warnung: Wenn du dich nicht innerhalb von {1} Sekunden bewegst, wirst du wegen Inaktivität zum Kick markiert."
 		"pt"		"Aviso: se você não se mover em {1} segundos, será marcado para kick por inatividade."
 		"chi"		"警告：如果你在 {1} 秒内不移动，将因挂机被标记为待踢出。"
+		"pl"		"Ostrzeżenie: jeśli nie ruszysz się w ciągu {1} s, zostaniesz oznaczony do wyrzucenia za nieaktywność."
+		"tr"		"Uyarı: {1} saniye içinde hareket etmezsen pasiflik nedeniyle atılmak üzere işaretleneceksin."
+		"it"		"Attenzione: se non ti muovi entro {1} secondi, verrai segnalato per il kick per inattività."
+		"ua"		"Увага: якщо ти не почнеш рухатися протягом {1} с, тебе позначать на кік за неактивність."
+		"zho"		"警告：如果你在 {1} 秒內不移動，將因掛機被標記為待踢出。"
+		"cze"		"Varování: pokud se do {1} sekund nepohneš, budeš označen k vyhození za neaktivitu."
 	}
 	"AFK Kick Flagged"
 	{
@@ -62,6 +92,12 @@
 		"de"		"Du wurdest wegen Inaktivität zum Kick markiert."
 		"pt"		"Você foi marcado para kick por inatividade."
 		"chi"		"你已因挂机被标记为待踢出。"
+		"pl"		"Zostałeś oznaczony do wyrzucenia za nieaktywność."
+		"tr"		"Pasiflik nedeniyle atılmak üzere işaretlendin."
+		"it"		"Sei stato segnalato per il kick per inattività."
+		"ua"		"Тебе позначено на кік за неактивність."
+		"zho"		"你已因掛機被標記為待踢出。"
+		"cze"		"Byl jsi označen k vyhození za neaktivitu."
 	}
 	"AFK Kick Flagged Position"
 	{
@@ -73,6 +109,12 @@
 		"de"		"Du wurdest wegen Inaktivität zum Kick markiert. [{1}/{2}]"
 		"pt"		"Você foi marcado para kick por inatividade. [{1}/{2}]"
 		"chi"		"你已因挂机被标记为待踢出。[{1}/{2}]"
+		"pl"		"Zostałeś oznaczony do wyrzucenia za nieaktywność. [{1}/{2}]"
+		"tr"		"Pasiflik nedeniyle atılmak üzere işaretlendin. [{1}/{2}]"
+		"it"		"Sei stato segnalato per il kick per inattività. [{1}/{2}]"
+		"ua"		"Тебе позначено на кік за неактивність. [{1}/{2}]"
+		"zho"		"你已因掛機被標記為待踢出。[{1}/{2}]"
+		"cze"		"Byl jsi označen k vyhození za neaktivitu. [{1}/{2}]"
 	}
 	"AFK Kicked"
 	{
@@ -84,6 +126,12 @@
 		"de"		"{lightgreen}{1} {default}wurde wegen zu langer AFK-Zeit gekickt. ({2} Sekunden)"
 		"pt"		"{lightgreen}{1} {default}foi kickado por ficar AFK por muito tempo. ({2} segundos)"
 		"chi"		"{lightgreen}{1} {default}因挂机时间过长被踢出。（{2} 秒）"
+		"pl"		"{lightgreen}{1} {default}został wyrzucony za zbyt długie AFK. ({2} s)"
+		"tr"		"{lightgreen}{1} {default}çok uzun süre AFK kaldığı için atıldı. ({2} saniye)"
+		"it"		"{lightgreen}{1} {default}è stato kickato per essere rimasto AFK troppo a lungo. ({2} secondi)"
+		"ua"		"{lightgreen}{1} {default}кікнуто за надто довгий AFK. ({2} с)"
+		"zho"		"{lightgreen}{1} {default}因掛機時間過長被踢出。（{2} 秒）"
+		"cze"		"{lightgreen}{1} {default}byl vyhozen za příliš dlouhé AFK. ({2} s)"
 	}
 	"AFK Kick Reason"
 	{
@@ -95,6 +143,12 @@
 		"de"		"Du wurdest wegen zu langer AFK-Zeit gekickt. ({1} Sekunden)"
 		"pt"		"Você foi kickado por ficar AFK por muito tempo. ({1} segundos)"
 		"chi"		"你因挂机时间过长被踢出。（{1} 秒）"
+		"pl"		"Zostałeś wyrzucony za zbyt długie AFK. ({1} s)"
+		"tr"		"Çok uzun süre AFK kaldığın için atıldın. ({1} saniye)"
+		"it"		"Sei stato kickato per essere rimasto AFK troppo a lungo. ({1} secondi)"
+		"ua"		"Тебе кікнуто за надто довгий AFK. ({1} с)"
+		"zho"		"你因掛機時間過長被踢出。（{1} 秒）"
+		"cze"		"Byl jsi vyhozen za příliš dlouhé AFK. ({1} s)"
 	}
 	"AFK Server Full"
 	{
@@ -105,6 +159,12 @@
 		"de"		"Der Server ist voll! Tritt jetzt einem Team bei, um im Spiel zu bleiben!"
 		"pt"		"O servidor está cheio! Entre em um time agora para continuar no jogo!"
 		"chi"		"服务器已满！请立即加入队伍以留在游戏中！"
+		"pl"		"Serwer jest pełny! Dołącz teraz do drużyny, aby zostać w grze!"
+		"tr"		"Sunucu dolu! Oyunda kalmak için hemen bir takıma katıl!"
+		"it"		"Il server è pieno! Unisciti subito a una squadra per restare in gioco!"
+		"ua"		"Сервер заповнений! Приєднайся до команди зараз, щоб залишитися в грі!"
+		"zho"		"伺服器已滿！請立即加入隊伍以留在遊戲中！"
+		"cze"		"Server je plný! Připoj se hned k týmu, abys zůstal ve hře!"
 	}
 	"AFK Spectators Will Be Kicked"
 	{
@@ -115,6 +175,12 @@
 		"de"		"Inaktive Zuschauer werden gekickt, um Platz für aktive Spieler zu schaffen."
 		"pt"		"Espectadores inativos serão kickados para dar lugar a jogadores ativos."
 		"chi"		"不活跃的观察者将被踢出，为活跃玩家腾出位置。"
+		"pl"		"Nieaktywni obserwatorzy zostaną wyrzuceni, aby zrobić miejsce dla aktywnych graczy."
+		"tr"		"Pasif izleyiciler, aktif oyunculara yer açmak için atılacak."
+		"it"		"Gli spettatori inattivi verranno kickati per fare spazio ai giocatori attivi."
+		"ua"		"Неактивних спостерігачів буде кікнуто, щоб звільнити місце для активних гравців."
+		"zho"		"不活躍的觀察者將被踢出，為活躍玩家騰出位置。"
+		"cze"		"Neaktivní diváci budou vyhozeni, aby se uvolnilo místo pro aktivní hráče."
 	}
 	"AFK Kicked For Room"
 	{
@@ -126,6 +192,12 @@
 		"de"		"{lightgreen}{1} {default}wurde gekickt, um Platz für aktive Spieler zu schaffen ({2} Sekunden inaktiv)."
 		"pt"		"{lightgreen}{1} {default}foi kickado para dar lugar a jogadores ativos (inativo por {2} segundos)."
 		"chi"		"{lightgreen}{1} {default}被踢出，为活跃玩家腾出位置（已挂机 {2} 秒）。"
+		"pl"		"{lightgreen}{1} {default}został wyrzucony, aby zrobić miejsce dla aktywnych graczy (nieaktywny przez {2} s)."
+		"tr"		"{lightgreen}{1} {default}aktif oyunculara yer açmak için atıldı ({2} saniye pasif)."
+		"it"		"{lightgreen}{1} {default}è stato kickato per fare spazio ai giocatori attivi (inattivo da {2} secondi)."
+		"ua"		"{lightgreen}{1} {default}кікнуто, щоб звільнити місце для активних гравців (неактивний {2} с)."
+		"zho"		"{lightgreen}{1} {default}被踢出，為活躍玩家騰出位置（已掛機 {2} 秒）。"
+		"cze"		"{lightgreen}{1} {default}byl vyhozen, aby se uvolnilo místo pro aktivní hráče (neaktivní {2} s)."
 	}
 	"AFK Kick For Room Reason"
 	{
@@ -137,5 +209,11 @@
 		"de"		"Du wurdest gekickt, um Platz für aktive Spieler zu schaffen ({1} Sekunden inaktiv)."
 		"pt"		"Você foi kickado para dar lugar a jogadores ativos (inativo por {1} segundos)."
 		"chi"		"你被踢出，为活跃玩家腾出位置（已挂机 {1} 秒）。"
+		"pl"		"Zostałeś wyrzucony, aby zrobić miejsce dla aktywnych graczy (nieaktywny przez {1} s)."
+		"tr"		"Aktif oyunculara yer açmak için atıldın ({1} saniye pasif)."
+		"it"		"Sei stato kickato per fare spazio ai giocatori attivi (inattivo da {1} secondi)."
+		"ua"		"Тебе кікнуто, щоб звільнити місце для активних гравців (неактивний {1} с)."
+		"zho"		"你被踢出，為活躍玩家騰出位置（已掛機 {1} 秒）。"
+		"cze"		"Byl jsi vyhozen, aby se uvolnilo místo pro aktivní hráče (neaktivní {1} s)."
 	}
 }
