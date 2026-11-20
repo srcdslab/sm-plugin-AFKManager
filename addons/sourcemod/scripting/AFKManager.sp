@@ -57,6 +57,8 @@ enum
 }
 
 char g_sActivityName[][] = { "mouse", "keys", "commands", "chat", "angles", "buttons", "observer", "team" };
+// Same order, translated for sm_afk_status (the detection log keeps the names above)
+char g_sActivityPhrase[][] = { "AFK Activity Mouse", "AFK Activity Keys", "AFK Activity Commands", "AFK Activity Chat", "AFK Activity Angles", "AFK Activity Buttons", "AFK Activity Observer", "AFK Activity Team" };
 
 // What sm_afk_status shows for each detection
 int g_iNewSources[] = { ACT_MOUSE, ACT_KEY, ACT_COMMAND, ACT_CHAT };
@@ -1269,17 +1271,27 @@ void FormatCounts(char[] sBuffer, int iMaxLen, const int[] iCounts, const int[] 
 		Format(sBuffer, iMaxLen, "%s%s%s=%d", sBuffer, i ? " " : "", g_sActivityName[iSources[i]], iCounts[iSources[i]]);
 }
 
-void FormatLastActivities(char[] sBuffer, int iMaxLen, int client, int iNow, const int[] iSources, int iSourceCount)
+void FormatLastActivities(char[] sBuffer, int iMaxLen, int viewer, int client, int iNow, const int[] iSources, int iSourceCount)
 {
+	char sName[32];
 	sBuffer[0] = '\0';
 	for (int i = 0; i < iSourceCount; i++)
 	{
+		FormatEx(sName, sizeof(sName), "%T", g_sActivityPhrase[iSources[i]], viewer);
 		int iTime = g_Players_iActivity[client][iSources[i]];
 		if (iTime > 0)
-			Format(sBuffer, iMaxLen, "%s%s%s %ds ago", sBuffer, i ? ", " : "", g_sActivityName[iSources[i]], iNow - iTime);
+			Format(sBuffer, iMaxLen, "%s%s%T", sBuffer, i ? ", " : "", "AFK Status Ago", viewer, sName, iNow - iTime);
 		else
-			Format(sBuffer, iMaxLen, "%s%s%s never", sBuffer, i ? ", " : "", g_sActivityName[iSources[i]]);
+			Format(sBuffer, iMaxLen, "%s%s%T", sBuffer, i ? ", " : "", "AFK Status Never", viewer, sName);
 	}
+}
+
+void GetStateLabel(int viewer, int target, char[] sBuffer, int iMaxLen)
+{
+	if (IsPlayerAlive(target))
+		FormatEx(sBuffer, iMaxLen, "%T", "AFK Status Alive", viewer);
+	else
+		FormatEx(sBuffer, iMaxLen, "%T", "AFK Status Dead", viewer);
 }
 
 stock void GetTeamLabel(int iTeam, char[] sBuffer, int iMaxLen)
@@ -1334,19 +1346,30 @@ void PrintStatusHeader(int client, int iThreshold)
 {
 	switch (g_iDetection)
 	{
-		case DETECTION_LEGACY: PrintToConsole(client, "[AFK] Mode 0: legacy detection only");
-		case DETECTION_OBSERVE: PrintToConsole(client, "[AFK] Mode 1: legacy detection acts, the new one is compared to it");
-		case DETECTION_NEW: PrintToConsole(client, "[AFK] Mode 2: new detection acts%s", UseNewDetection() ? "" : " (legacy until the mouse data is confirmed)");
+		case DETECTION_LEGACY: PrintToConsole(client, "[AFK] %t", "AFK Status Mode Legacy");
+		case DETECTION_OBSERVE: PrintToConsole(client, "[AFK] %t", "AFK Status Mode Observe");
+		case DETECTION_NEW:
+		{
+			if (UseNewDetection())
+				PrintToConsole(client, "[AFK] %t", "AFK Status Mode New");
+			else
+				PrintToConsole(client, "[AFK] %t", "AFK Status Mode New Pending");
+		}
 	}
 
 	if (g_iHealth == HEALTH_OK)
-		PrintToConsole(client, "[AFK] New detection ready: mouse movement received for %.0f%% of %d view changes", float(g_iHealthMouseSamples) * 100.0 / float(g_iHealthSamples), g_iHealthSamples);
+	{
+		// Formatted here: a literal percent sign is not safe inside a phrase
+		char sRatio[16];
+		FormatEx(sRatio, sizeof(sRatio), "%.0f%%", float(g_iHealthMouseSamples) * 100.0 / float(g_iHealthSamples));
+		PrintToConsole(client, "[AFK] %t", "AFK Status Ready", sRatio, g_iHealthSamples);
+	}
 	else if (g_iHealth == HEALTH_UNKNOWN)
-		PrintToConsole(client, "[AFK] New detection waiting for data: %d of %d view changes seen", g_iHealthSamples, HEALTH_MIN_SAMPLES);
+		PrintToConsole(client, "[AFK] %t", "AFK Status Waiting", g_iHealthSamples, HEALTH_MIN_SAMPLES);
 	else
-		PrintToConsole(client, "[AFK] New detection disabled: the server does not receive the players' mouse movement");
+		PrintToConsole(client, "[AFK] %t", "AFK Status Disabled");
 
-	PrintToConsole(client, "[AFK] Comparison threshold %ds, mouse threshold %d per second, keys alone %ds", iThreshold, g_iMouseThreshold, g_iKeyOnlyTime);
+	PrintToConsole(client, "[AFK] %t", "AFK Status Thresholds", iThreshold, g_iMouseThreshold, g_iKeyOnlyTime);
 }
 
 void PrintStatusList(int client, int iNow, int iThreshold)
@@ -1375,7 +1398,13 @@ void PrintStatusList(int client, int iNow, int iThreshold)
 		iCount++;
 	}
 
-	PrintToConsole(client, "  %-24s %-5s %-6s %7s %7s", "Player", "Team", "State", "Legacy", "New");
+	char sColPlayer[32], sColTeam[32], sColState[32], sColLegacy[32], sColNew[32];
+	FormatEx(sColPlayer, sizeof(sColPlayer), "%T", "AFK Status Column Player", client);
+	FormatEx(sColTeam, sizeof(sColTeam), "%T", "AFK Status Column Team", client);
+	FormatEx(sColState, sizeof(sColState), "%T", "AFK Status Column State", client);
+	FormatEx(sColLegacy, sizeof(sColLegacy), "%T", "AFK Status Column Legacy", client);
+	FormatEx(sColNew, sizeof(sColNew), "%T", "AFK Status Column New", client);
+	PrintToConsole(client, "  %-24s %-5s %-6s %7s %7s", sColPlayer, sColTeam, sColState, sColLegacy, sColNew);
 
 	for (int i = 0; i < iCount; i++)
 	{
@@ -1384,23 +1413,23 @@ void PrintStatusList(int client, int iNow, int iThreshold)
 		char sName[25], sTeam[8];
 		GetClientName(target, sName, sizeof(sName));
 		GetTeamLabel(GetClientTeam(target), sTeam, sizeof(sTeam));
-		char sState[8];
-		strcopy(sState, sizeof(sState), IsPlayerAlive(target) ? "alive" : "dead");
+		char sState[32];
+		GetStateLabel(client, target, sState, sizeof(sState));
 
 		if (!g_Players_bEnabled[target])
 		{
-			PrintToConsole(client, "  %-24s %-5s %-6s %7s %7s  not tracked", sName, sTeam, sState, "-", "-");
+			PrintToConsole(client, "  %-24s %-5s %-6s %7s %7s  %t", sName, sTeam, sState, "-", "-", "AFK Status Not Tracked Short");
 			continue;
 		}
 
 		int iNew = GetNewIdleTime(target, iNow);
 		int iLegacy = GetLegacyIdleTime(target, iNow);
 
-		char sNote[48];
+		char sNote[128];
 		if (iNew >= iThreshold && iLegacy < iThreshold)
-			strcopy(sNote, sizeof(sNote), "<- AFK for the new detection only");
+			FormatEx(sNote, sizeof(sNote), "%T", "AFK Status Only New", client);
 		else if (iLegacy >= iThreshold && iNew < iThreshold)
-			strcopy(sNote, sizeof(sNote), "<- AFK for the legacy detection only");
+			FormatEx(sNote, sizeof(sNote), "%T", "AFK Status Only Legacy", client);
 
 		PrintToConsole(client, "  %-24s %-5s %-6s %6ds %6ds  %s", sName, sTeam, sState, iLegacy, iNew, sNote);
 	}
@@ -1408,25 +1437,36 @@ void PrintStatusList(int client, int iNow, int iThreshold)
 
 void PrintPlayerStatus(int client, int target, int iNow)
 {
-	char sTeam[8];
+	char sTeam[8], sState[32];
 	GetTeamLabel(GetClientTeam(target), sTeam, sizeof(sTeam));
-	PrintToConsole(client, "[AFK] %N (#%d) - %s, %s", target, GetClientUserId(target), sTeam, IsPlayerAlive(target) ? "alive" : "dead");
+	GetStateLabel(client, target, sState, sizeof(sState));
+	PrintToConsole(client, "[AFK] %N (#%d) - %s, %s", target, GetClientUserId(target), sTeam, sState);
 
 	if (!g_Players_bEnabled[target])
 	{
-		PrintToConsole(client, "  Not tracked (admin immunity, or not fully connected yet).");
+		PrintToConsole(client, "  %t", "AFK Status Not Tracked");
 		return;
 	}
 
-	PrintToConsole(client, "  Idle: legacy %ds, new %ds. Used to act: %s detection.", GetLegacyIdleTime(target, iNow), GetNewIdleTime(target, iNow), UseNewDetection() ? "new" : "legacy");
+	if (UseNewDetection())
+		PrintToConsole(client, "  %t", "AFK Status Idle New", GetLegacyIdleTime(target, iNow), GetNewIdleTime(target, iNow));
+	else
+		PrintToConsole(client, "  %t", "AFK Status Idle Legacy", GetLegacyIdleTime(target, iNow), GetNewIdleTime(target, iNow));
 
-	char sLine[256];
-	FormatLastActivities(sLine, sizeof(sLine), target, iNow, g_iNewSources, sizeof(g_iNewSources));
-	PrintToConsole(client, "  New detection - %s", sLine);
-	FormatLastActivities(sLine, sizeof(sLine), target, iNow, g_iLegacySources, sizeof(g_iLegacySources));
-	PrintToConsole(client, "  Legacy detection - %s", sLine);
-	PrintToConsole(client, "  View turned without mouse while alive: %d of %d times", g_Players_iViewChangesNoMouse[target], g_Players_iViewChanges[target]);
+	// 512: the translated activity names can take several bytes per character
+	char sLine[512];
+	FormatLastActivities(sLine, sizeof(sLine), client, target, iNow, g_iNewSources, sizeof(g_iNewSources));
+	PrintToConsole(client, "  %t", "AFK Status New Signals", sLine);
+	FormatLastActivities(sLine, sizeof(sLine), client, target, iNow, g_iLegacySources, sizeof(g_iLegacySources));
+	PrintToConsole(client, "  %t", "AFK Status Legacy Signals", sLine);
+	PrintToConsole(client, "  %t", "AFK Status View No Mouse", g_Players_iViewChangesNoMouse[target], g_Players_iViewChanges[target]);
 
 	if (g_Players_iEpisode[target] != EPISODE_NONE)
-		PrintToConsole(client, "  The detections disagree for %ds: AFK for the %s detection only.", iNow - g_Players_iEpisodeStart[target], g_Players_iEpisode[target] == EPISODE_NEW_IDLE ? "new" : "legacy");
+	{
+		int iDuration = iNow - g_Players_iEpisodeStart[target];
+		if (g_Players_iEpisode[target] == EPISODE_NEW_IDLE)
+			PrintToConsole(client, "  %t", "AFK Status Disagree New", iDuration);
+		else
+			PrintToConsole(client, "  %t", "AFK Status Disagree Legacy", iDuration);
+	}
 }
