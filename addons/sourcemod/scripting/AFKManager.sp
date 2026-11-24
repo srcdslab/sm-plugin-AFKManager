@@ -37,6 +37,15 @@
 #define HEALTH_MIN_SAMPLES 2000
 #define HEALTH_MIN_MOUSE_RATIO 0.25
 
+// Some clients never send mouse movement at all (controller, some input setups): seen on Z.ESCAPE
+// on 2026-11-24, a player turned the view 32515 times with no mouse data while playing.
+// For them, the view turned by the client counts instead of the mouse, as long as they press keys
+#define MOUSELESS_MIN_VIEW_CHANGES 500 // View changes seen before a client is judged
+#define MOUSELESS_MIN_PERCENT 99       // Share of them without mouse movement
+#define MOUSELESS_VIEW_TICKS 8         // Ticks with the view turning within one second to count as activity
+#define MOUSELESS_VIEW_MAX_STEP 20.0   // A larger turn in one tick is the server setting the view (teleport)
+#define MOUSELESS_KEY_WINDOW 60        // Seconds since the last key press for the view to count
+
 // A disagreement between the two detections, written to the detection log once it ends
 #define EPISODE_NONE 0
 #define EPISODE_NEW_IDLE 1    // The new detection sees an AFK player that the legacy one sees as active
@@ -92,6 +101,8 @@ bool g_Players_bHasRawAngles[MAXPLAYERS + 1];
 float g_Players_fRawAngles[MAXPLAYERS + 1][2];
 int g_Players_iViewChanges[MAXPLAYERS + 1];
 int g_Players_iViewChangesNoMouse[MAXPLAYERS + 1];
+int g_Players_iViewWindow[MAXPLAYERS + 1];
+int g_Players_iViewTicks[MAXPLAYERS + 1];
 
 // Comparison between the two detections
 int g_Players_iEpisode[MAXPLAYERS + 1];
@@ -234,13 +245,13 @@ public void OnPluginStart()
 	((cvar = CreateConVar("sm_afk_max_spectators_full", "10", "Maximum number of spectators allowed when server is full (0 = unlimited)"))).AddChangeHook(Cvar_MaxSpectatorsFull);
 	g_iMaxSpectatorsFull = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_detection", "1", "AFK detection: 0 = legacy only, 1 = legacy enforces and the new detection is compared to it (see sm_afk_detection_log), 2 = new detection enforces (legacy until the mouse data is confirmed). In mode 2 a player who never moves the mouse (controller, +left/+right) is moved after sm_afk_move_time + sm_afk_key_only_time whatever they press", _, true, 0.0, true, 2.0))).AddChangeHook(Cvar_Detection);
+	((cvar = CreateConVar("sm_afk_detection", "1", "AFK detection: 0 = legacy only, 1 = legacy enforces and the new detection is compared to it (see sm_afk_detection_log), 2 = new detection enforces (legacy until the mouse data is confirmed). In mode 2 a player whose client never sends mouse movement (controller) is judged on the view they turn while pressing keys; one who turns with +left/+right only is moved after sm_afk_move_time + sm_afk_key_only_time whatever they press", _, true, 0.0, true, 2.0))).AddChangeHook(Cvar_Detection);
 	g_iDetection = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_mouse_threshold", "45", "New detection: mouse movement needed within one second to count as activity (45 = about 1 degree of view rotation with m_yaw 0.022)", _, true, 1.0))).AddChangeHook(Cvar_MouseThreshold);
 	g_iMouseThreshold = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Controller and +left/+right players only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
+	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Players who turn with +left/+right only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
 	g_iKeyOnlyTime = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_detection_log", "1", "Log every disagreement between the legacy and the new detection to " ... DETECTION_LOG_FILE ... " (sm_afk_detection 1 or 2)", _, true, 0.0, true, 1.0))).AddChangeHook(Cvar_DetectionLog);
@@ -484,6 +495,8 @@ void ResetPlayer(int client)
 	g_Players_bHasRawAngles[client] = false;
 	g_Players_iViewChanges[client] = 0;
 	g_Players_iViewChangesNoMouse[client] = 0;
+	g_Players_iViewWindow[client] = 0;
+	g_Players_iViewTicks[client] = 0;
 	g_Players_iEpisode[client] = EPISODE_NONE;
 	for (int i = 0; i < ACT_COUNT; i++)
 	{
@@ -662,7 +675,11 @@ public void OnPlayerRunCmdPre(int client, int buttons, int impulse, const float 
 		{
 			g_Players_iViewChanges[client]++;
 			if (iMouse == 0)
+			{
 				g_Players_iViewChangesNoMouse[client]++;
+				if (IsMouseless(client))
+					TrackMouselessView(client, angles);
+			}
 
 			SampleMouseHealth(iMouse > 0);
 		}
@@ -671,6 +688,43 @@ public void OnPlayerRunCmdPre(int client, int buttons, int impulse, const float 
 	g_Players_fRawAngles[client][0] = angles[0];
 	g_Players_fRawAngles[client][1] = angles[1];
 	g_Players_bHasRawAngles[client] = true;
+}
+
+// A client whose view turns but which never sends mouse movement (controller, some input setups)
+stock bool IsMouseless(int client)
+{
+	return g_Players_iViewChanges[client] >= MOUSELESS_MIN_VIEW_CHANGES
+		&& g_Players_iViewChangesNoMouse[client] * 100 >= g_Players_iViewChanges[client] * MOUSELESS_MIN_PERCENT;
+}
+
+// For a mouseless client the view turning stands in for the mouse: it counts once it turns
+// in small steps on enough ticks within one second (the server setting the view, after a
+// teleport, is a single jump) and only while the player also presses keys, so that the view
+// of an AFK player turned by the map keeps nobody active
+void TrackMouselessView(int client, const float angles[3])
+{
+	float fPitch = FloatAbs(angles[0] - g_Players_fRawAngles[client][0]);
+	float fYaw = FloatAbs(angles[1] - g_Players_fRawAngles[client][1]);
+	if (fYaw > 180.0)
+		fYaw = 360.0 - fYaw;
+
+	if (fPitch > MOUSELESS_VIEW_MAX_STEP || fYaw > MOUSELESS_VIEW_MAX_STEP)
+		return;
+
+	int iTick = GetGameTickCount();
+	if (iTick < g_Players_iViewWindow[client] || iTick - g_Players_iViewWindow[client] >= g_iMouseWindowTicks)
+	{
+		g_Players_iViewWindow[client] = iTick;
+		g_Players_iViewTicks[client] = 0;
+	}
+
+	if (++g_Players_iViewTicks[client] < MOUSELESS_VIEW_TICKS)
+		return;
+
+	g_Players_iViewWindow[client] = iTick;
+	g_Players_iViewTicks[client] = 0;
+	if (GetTime() - g_Players_iActivity[client][ACT_KEY] <= MOUSELESS_KEY_WINDOW)
+		RecordActivity(client, ACT_MOUSE);
 }
 
 // Samples a failed mouse check again (map start, detection mode change). A passed check stays
@@ -1287,12 +1341,12 @@ void EndEpisode(int client, int iNow, const char[] sEnd)
 		ClearCounts(g_Players_iSinceLegacy[client]);
 	}
 
-	LogToFileEx(g_sDetectionLog, "%s %L | %s %s at %s, lasted %ds | idle max: new %ds, legacy %ds (threshold %ds) | %s: %s | view turned without mouse: %d of %d | end: %s",
+	LogToFileEx(g_sDetectionLog, "%s %L | %s %s at %s, lasted %ds | idle max: new %ds, legacy %ds (threshold %ds) | %s: %s | view turned without mouse: %d of %d%s | end: %s",
 		iEpisode == EPISODE_NEW_IDLE ? "[new: AFK, legacy: active]" : "[legacy: AFK, new: active]",
 		client, sTeam, g_Players_bEpisodeAlive[client] ? "alive" : "dead", sStart, iNow - g_Players_iEpisodeStart[client],
 		g_Players_iEpisodeMaxNew[client], g_Players_iEpisodeMaxLegacy[client], GetObservationThreshold(g_Players_iEpisodeTeam[client]),
 		iEpisode == EPISODE_NEW_IDLE ? "since last mouse/chat" : "since last legacy activity", sCounts,
-		g_Players_iViewChangesNoMouse[client], g_Players_iViewChanges[client], sEnd);
+		g_Players_iViewChangesNoMouse[client], g_Players_iViewChanges[client], IsMouseless(client) ? " (no mouse data: the view counts)" : "", sEnd);
 }
 
 void CloseAllEpisodes(const char[] sEnd)
