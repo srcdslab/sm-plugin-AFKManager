@@ -134,6 +134,8 @@ int g_iKeyOnlyTime;
 bool g_bDetectionLog;
 int g_iMouseWindowTicks;
 int g_iHealth = HEALTH_UNKNOWN;
+bool g_bHealthCapable = true;
+bool g_bConfigsExecuted = false;
 int g_iHealthSamples;
 int g_iHealthMouseSamples;
 char g_sDetectionLog[PLATFORM_MAX_PATH];
@@ -179,7 +181,11 @@ public void Cvar_ImmunityItems(ConVar convar, const char[] oldValue, const char[
 public void Cvar_Detection(ConVar convar, const char[] oldValue, const char[] newValue)
 {
 	g_iDetection = convar.IntValue;
-	LogToFileEx(g_sDetectionLog, "Detection mode changed from %s to %s", oldValue, newValue);
+	if (g_bDetectionLog && g_bConfigsExecuted && StringToInt(oldValue) != g_iDetection)
+		LogToFileEx(g_sDetectionLog, "Detection mode changed from %s to %s", oldValue, newValue);
+
+	// A failed mouse check is not final: a new mode samples it again
+	RearmMouseHealth("detection mode changed");
 	OnObservationChanged();
 }
 public void Cvar_MouseThreshold(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -228,13 +234,13 @@ public void OnPluginStart()
 	((cvar = CreateConVar("sm_afk_max_spectators_full", "10", "Maximum number of spectators allowed when server is full (0 = unlimited)"))).AddChangeHook(Cvar_MaxSpectatorsFull);
 	g_iMaxSpectatorsFull = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_detection", "1", "AFK detection: 0 = legacy only, 1 = legacy enforces and the new detection is compared to it (see sm_afk_detection_log), 2 = new detection enforces (legacy until the mouse data is confirmed)", _, true, 0.0, true, 2.0))).AddChangeHook(Cvar_Detection);
+	((cvar = CreateConVar("sm_afk_detection", "1", "AFK detection: 0 = legacy only, 1 = legacy enforces and the new detection is compared to it (see sm_afk_detection_log), 2 = new detection enforces (legacy until the mouse data is confirmed). In mode 2 a player who never moves the mouse (controller, +left/+right) is moved after sm_afk_move_time + sm_afk_key_only_time whatever they press", _, true, 0.0, true, 2.0))).AddChangeHook(Cvar_Detection);
 	g_iDetection = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_mouse_threshold", "45", "New detection: mouse movement needed within one second to count as activity (45 = about 1 degree of view rotation with m_yaw 0.022)", _, true, 1.0))).AddChangeHook(Cvar_MouseThreshold);
 	g_iMouseThreshold = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own)", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
+	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Controller and +left/+right players only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
 	g_iKeyOnlyTime = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_detection_log", "1", "Log every disagreement between the legacy and the new detection to " ... DETECTION_LOG_FILE ... " (sm_afk_detection 1 or 2)", _, true, 0.0, true, 1.0))).AddChangeHook(Cvar_DetectionLog);
@@ -247,6 +253,7 @@ public void OnPluginStart()
 
 	if (GetFeatureStatus(FeatureType_Capability, FEATURECAP_PLAYERRUNCMD_11PARAMS) != FeatureStatus_Available)
 	{
+		g_bHealthCapable = false;
 		g_iHealth = HEALTH_FAILED;
 		LogError("This server does not give plugins the players' mouse movement: the new AFK detection is disabled and the legacy one stays in use.");
 	}
@@ -313,6 +320,9 @@ stock void VerifyNative_EntWatch()
 public void OnMapStart()
 {
 	g_iMapStartTime = GetTime();
+
+	// A failed mouse check is sampled again on every map
+	RearmMouseHealth("map start");
 	CreateTimer(AFK_CHECK_INTERVAL, Timer_CheckPlayer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(SPECTATOR_CHECK_INTERVAL, Timer_CheckSpectators, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
 	CreateTimer(AFK_CHECK_INTERVAL, Timer_CheckFullServer, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
@@ -327,6 +337,11 @@ public void OnMapStart()
 				OnClientPostAdminCheck(i);
 		}
 	}
+}
+
+public void OnConfigsExecuted()
+{
+	g_bConfigsExecuted = true;
 }
 
 public void OnMapEnd()
@@ -580,6 +595,19 @@ void RecordActivity(int client, int iSource)
 		g_Players_iLastAction[client] = iNow;
 }
 
+// Cuts a string to at most iMaxBytes bytes without splitting a UTF-8 character
+stock void TruncateUtf8(char[] sBuffer, int iMaxBytes)
+{
+	if (strlen(sBuffer) <= iMaxBytes)
+		return;
+
+	int i = iMaxBytes;
+	while (i > 0 && (sBuffer[i] & 0xC0) == 0x80)
+		i--;
+
+	sBuffer[i] = '\0';
+}
+
 stock int IntAbs(int iValue)
 {
 	return iValue < 0 ? -iValue : iValue;
@@ -643,6 +671,20 @@ public void OnPlayerRunCmdPre(int client, int buttons, int impulse, const float 
 	g_Players_fRawAngles[client][0] = angles[0];
 	g_Players_fRawAngles[client][1] = angles[1];
 	g_Players_bHasRawAngles[client] = true;
+}
+
+// Samples a failed mouse check again (map start, detection mode change). A passed check stays
+// passed, and a server without the 11-parameter OnPlayerRunCmdPre never gets the mouse at all
+void RearmMouseHealth(const char[] sReason)
+{
+	if (g_iHealth != HEALTH_FAILED || !g_bHealthCapable)
+		return;
+
+	g_iHealth = HEALTH_UNKNOWN;
+	g_iHealthSamples = 0;
+	g_iHealthMouseSamples = 0;
+	if (g_bDetectionLog)
+		LogToFileEx(g_sDetectionLog, "Mouse check sampled again (%s)", sReason);
 }
 
 // The new detection is only trusted once the server is seen receiving mouse movement
@@ -1151,10 +1193,14 @@ stock bool IsObserving()
 	return g_iDetection != DETECTION_LEGACY && g_bDetectionLog && g_iHealth == HEALTH_OK;
 }
 
-// Idle time from which a player counts as AFK in the comparison: the first action the plugin takes
-stock int GetObservationThreshold()
+// Idle time from which a player counts as AFK in the comparison: the first action the plugin
+// takes on a player of that team. Players in a team are moved, spectators can only be kicked
+stock int GetObservationThreshold(int iTeam)
 {
-	return RoundToFloor(g_fMoveTime > 0.0 ? g_fMoveTime : GetFallbackKickTime());
+	if (iTeam > CS_TEAM_SPECTATOR && g_fMoveTime > 0.0)
+		return RoundToFloor(g_fMoveTime);
+
+	return RoundToFloor(GetFallbackKickTime());
 }
 
 void OnObservationChanged()
@@ -1168,12 +1214,12 @@ void ObserveDetection(int iNow)
 	if (!IsObserving())
 		return;
 
-	int iThreshold = GetObservationThreshold();
-
 	for (int client = 1; client <= MaxClients; client++)
 	{
 		if (!g_Players_bEnabled[client] || !IsClientInGame(client))
 			continue;
+
+		int iThreshold = GetObservationThreshold(GetClientTeam(client));
 
 		int iNew = GetNewIdleTime(client, iNow);
 		int iLegacy = GetLegacyIdleTime(client, iNow);
@@ -1244,7 +1290,7 @@ void EndEpisode(int client, int iNow, const char[] sEnd)
 	LogToFileEx(g_sDetectionLog, "%s %L | %s %s at %s, lasted %ds | idle max: new %ds, legacy %ds (threshold %ds) | %s: %s | view turned without mouse: %d of %d | end: %s",
 		iEpisode == EPISODE_NEW_IDLE ? "[new: AFK, legacy: active]" : "[legacy: AFK, new: active]",
 		client, sTeam, g_Players_bEpisodeAlive[client] ? "alive" : "dead", sStart, iNow - g_Players_iEpisodeStart[client],
-		g_Players_iEpisodeMaxNew[client], g_Players_iEpisodeMaxLegacy[client], GetObservationThreshold(),
+		g_Players_iEpisodeMaxNew[client], g_Players_iEpisodeMaxLegacy[client], GetObservationThreshold(g_Players_iEpisodeTeam[client]),
 		iEpisode == EPISODE_NEW_IDLE ? "since last mouse/chat" : "since last legacy activity", sCounts,
 		g_Players_iViewChangesNoMouse[client], g_Players_iViewChanges[client], sEnd);
 }
@@ -1315,12 +1361,11 @@ public Action Command_Status(int client, int args)
 		ReplyToCommand(client, "[AFK] %t", "See console for output");
 
 	int iNow = GetTime();
-	int iThreshold = GetObservationThreshold();
-	PrintStatusHeader(client, iThreshold);
+	PrintStatusHeader(client, GetObservationThreshold(CS_TEAM_CT));
 
 	if (args < 1)
 	{
-		PrintStatusList(client, iNow, iThreshold);
+		PrintStatusList(client, iNow);
 		return Plugin_Handled;
 	}
 
@@ -1372,7 +1417,7 @@ void PrintStatusHeader(int client, int iThreshold)
 	PrintToConsole(client, "[AFK] %t", "AFK Status Thresholds", iThreshold, g_iMouseThreshold, g_iKeyOnlyTime);
 }
 
-void PrintStatusList(int client, int iNow, int iThreshold)
+void PrintStatusList(int client, int iNow)
 {
 	int iClients[MAXPLAYERS + 1];
 	int iSortIdle[MAXPLAYERS + 1];
@@ -1410,8 +1455,9 @@ void PrintStatusList(int client, int iNow, int iThreshold)
 	{
 		int target = iClients[i];
 
-		char sName[25], sTeam[8];
+		char sName[MAX_NAME_LENGTH], sTeam[8];
 		GetClientName(target, sName, sizeof(sName));
+		TruncateUtf8(sName, 24);
 		GetTeamLabel(GetClientTeam(target), sTeam, sizeof(sTeam));
 		char sState[32];
 		GetStateLabel(client, target, sState, sizeof(sState));
@@ -1424,6 +1470,7 @@ void PrintStatusList(int client, int iNow, int iThreshold)
 
 		int iNew = GetNewIdleTime(target, iNow);
 		int iLegacy = GetLegacyIdleTime(target, iNow);
+		int iThreshold = GetObservationThreshold(GetClientTeam(target));
 
 		char sNote[128];
 		if (iNew >= iThreshold && iLegacy < iThreshold)
