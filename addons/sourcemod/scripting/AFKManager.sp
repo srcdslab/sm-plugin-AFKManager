@@ -251,7 +251,7 @@ public void OnPluginStart()
 	((cvar = CreateConVar("sm_afk_mouse_threshold", "15", "New detection: mouse movement needed within one second to count as activity (15 = about a third of a degree of view rotation at sensitivity 1)", _, true, 1.0))).AddChangeHook(Cvar_MouseThreshold);
 	g_iMouseThreshold = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Players who turn with +left/+right only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
+	((cvar = CreateConVar("sm_afk_key_only_time", "300", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Players who turn with +left/+right only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
 	g_iKeyOnlyTime = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_detection_log", "1", "Log every disagreement between the legacy and the new detection to " ... DETECTION_LOG_FILE ... " (sm_afk_detection 1 or 2)", _, true, 0.0, true, 1.0))).AddChangeHook(Cvar_DetectionLog);

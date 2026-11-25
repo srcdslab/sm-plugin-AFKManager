@@ -125,8 +125,8 @@ sm_afk_immunity "1"             // Admin immunity level
 sm_afk_immunity_items "1"       // Item holder immunity
 sm_afk_max_spectators_full "10" // Max spectators when full
 sm_afk_detection "1"            // 0 = legacy, 1 = legacy + comparison, 2 = new detection
-sm_afk_mouse_threshold "45"     // Mouse movement per second that counts (45 = about 1 degree)
-sm_afk_key_only_time "120"      // Seconds keys/commands alone keep a player active
+sm_afk_mouse_threshold "15"     // Mouse movement per second that counts (15 = about 1/3 degree)
+sm_afk_key_only_time "300"      // Seconds keys/commands alone keep a player active
 sm_afk_detection_log "1"        // Log disagreements between the two detections
 ```
 
