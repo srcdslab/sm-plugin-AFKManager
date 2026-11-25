@@ -248,7 +248,7 @@ public void OnPluginStart()
 	((cvar = CreateConVar("sm_afk_detection", "1", "AFK detection: 0 = legacy only, 1 = legacy enforces and the new detection is compared to it (see sm_afk_detection_log), 2 = new detection enforces (legacy until the mouse data is confirmed). In mode 2 a player whose client never sends mouse movement (controller) is judged on the view they turn while pressing keys; one who turns with +left/+right only is moved after sm_afk_move_time + sm_afk_key_only_time whatever they press", _, true, 0.0, true, 2.0))).AddChangeHook(Cvar_Detection);
 	g_iDetection = cvar.IntValue;
 
-	((cvar = CreateConVar("sm_afk_mouse_threshold", "45", "New detection: mouse movement needed within one second to count as activity (45 = about 1 degree of view rotation with m_yaw 0.022)", _, true, 1.0))).AddChangeHook(Cvar_MouseThreshold);
+	((cvar = CreateConVar("sm_afk_mouse_threshold", "15", "New detection: mouse movement needed within one second to count as activity (15 = about a third of a degree of view rotation at sensitivity 1)", _, true, 1.0))).AddChangeHook(Cvar_MouseThreshold);
 	g_iMouseThreshold = cvar.IntValue;
 
 	((cvar = CreateConVar("sm_afk_key_only_time", "120", "New detection: seconds key presses and commands alone keep a player active without any mouse movement or chat (0 = they never do on their own). Players who turn with +left/+right only have keys and chat, so this is their margin", _, true, 0.0))).AddChangeHook(Cvar_KeyOnlyTime);
