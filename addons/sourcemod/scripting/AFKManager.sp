@@ -528,6 +528,12 @@ public void Event_PlayerTeamPost(Event event, const char[] name, bool dontBroadc
 		else
 			RecordActivity(client, ACT_TEAM);
 
+		// Leaving the team menu (own choice or Timer_CheckPlayerHasJoinTeam) starts the new
+		// detection again, as it restarts the legacy one: the menu sends no mouse movement,
+		// so a joiner was kicked as soon as the timer moved them to spectator
+		if (event.GetInt("oldteam") == CS_TEAM_NONE && g_Players_bEnabled[client])
+			g_Players_iTrackStart[client] = GetTime();
+
 		UpdatePlayerCounts();
 	}
 }
